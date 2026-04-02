@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 from uuid import UUID
 
 import click
@@ -21,6 +22,49 @@ console = Console()
 
 _RATE_LIMIT_SECS = 0.5  # 2 req/sec
 _MAX_STORES = 10_000
+
+BLOCKED_DOMAINS = {
+    "warhammer.com",
+    "games-workshop.com",
+    "facebook.com",
+    "fb.com",
+    "ebay.com",
+    "tcgplayer.com",
+    "amazon.com",
+    "etsy.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    "youtube.com",
+    "tiktok.com",
+    "yelp.com",
+    "google.com",
+}
+
+
+def _is_blocked_domain(url: str) -> bool:
+    """Return True if the URL's domain is in BLOCKED_DOMAINS."""
+    assert isinstance(url, str), "url must be a string"
+    assert len(url) > 0, "url must not be empty"
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    domain = hostname.removeprefix("www.")
+
+    assert isinstance(domain, str), "domain must be a string"
+
+    if domain in BLOCKED_DOMAINS:
+        return True
+
+    # Check parent domain (e.g. store.warhammer.com -> warhammer.com)
+    parts = domain.split(".")
+    max_parts = len(parts)
+    for i in range(1, max_parts):
+        parent = ".".join(parts[i:])
+        if parent in BLOCKED_DOMAINS:
+            return True
+
+    return False
 
 
 @click.group()
@@ -88,6 +132,7 @@ def content(
         extracted_count = 0
         error_count = 0
         llm_count = 0
+        scraped_urls: set[str] = set()
 
         bounded_limit = min(len(presences), _MAX_STORES)
         for i in range(bounded_limit):
@@ -95,8 +140,27 @@ def content(
             assert isinstance(p, OnlinePresence), "presence must be OnlinePresence"
             assert p.url is not None, "presence must have a URL"
 
+            url = p.url
+            assert isinstance(url, str), "url must be a string"
+
+            # Check blocked domain before printing progress
+            if _is_blocked_domain(url):
+                console.print(
+                    f"  [{i + 1}/{bounded_limit}] {url} [yellow]skipped (blocked domain)[/yellow]"
+                )
+                continue
+
+            # Check for duplicate URL within this run
+            if url in scraped_urls:
+                console.print(
+                    f"  [{i + 1}/{bounded_limit}] {url} [yellow]skipped (duplicate URL)[/yellow]"
+                )
+                continue
+
+            scraped_urls.add(url)
+
             console.print(
-                f"  [{i + 1}/{bounded_limit}] {p.url}",
+                f"  [{i + 1}/{bounded_limit}] {url}",
                 end=" ",
             )
 
