@@ -87,3 +87,4 @@ class CheckType(StrEnum):
     SINGLES_DETECT = "singles_detect"
     CLOSURE_DETECT = "closure_detect"
     MANUAL_REVIEW = "manual_review"
+    CONTENT_EXTRACT = "content_extract"
