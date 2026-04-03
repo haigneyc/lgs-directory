@@ -1,0 +1,147 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useCallback } from "react";
+import { SearchIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+interface FilterBarProps {
+  states: string[];
+  statuses: string[];
+  wpnLevels: string[];
+}
+
+export function FilterBar({ states, statuses, wpnLevels }: FilterBarProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const setParam = useCallback(
+    (key: string, value: string | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== "all") {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      params.delete("page"); // Reset to page 1 on filter change
+      router.push(`/?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const currentState = searchParams.get("state") ?? "";
+  const currentStatus = searchParams.get("status") ?? "";
+  const currentWpn = searchParams.get("wpn") ?? "";
+  const currentSearch = searchParams.get("q") ?? "";
+  const [searchText, setSearchText] = useState(currentSearch);
+
+  const submitSearch = useCallback(() => {
+    const trimmed = searchText.trim();
+    setParam("q", trimmed || null);
+  }, [searchText, setParam]);
+
+  const hasFilters = currentState || currentStatus || currentWpn || currentSearch;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-1">
+        <Input
+          placeholder="Search stores… (Enter)"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="w-48 bg-zinc-900 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              submitSearch();
+            }
+          }}
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          className="bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+          onClick={submitSearch}
+          aria-label="Search"
+        >
+          <SearchIcon className="size-4" />
+        </Button>
+      </div>
+
+      <Select
+        value={currentState || "all"}
+        onValueChange={(v) => setParam("state", v)}
+      >
+        <SelectTrigger className="w-32 bg-zinc-900 border-zinc-800 text-zinc-300">
+          <SelectValue placeholder="State" />
+        </SelectTrigger>
+        <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectItem value="all" className="text-zinc-400">
+            All states
+          </SelectItem>
+          {states.map((s) => (
+            <SelectItem key={s} value={s} className="text-zinc-200">
+              {s}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={currentStatus || "all"}
+        onValueChange={(v) => setParam("status", v)}
+      >
+        <SelectTrigger className="w-36 bg-zinc-900 border-zinc-800 text-zinc-300">
+          <SelectValue placeholder="Status" />
+        </SelectTrigger>
+        <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectItem value="all" className="text-zinc-400">
+            All statuses
+          </SelectItem>
+          {statuses.map((s) => (
+            <SelectItem key={s} value={s} className="text-zinc-200">
+              {s}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={currentWpn || "all"}
+        onValueChange={(v) => setParam("wpn", v)}
+      >
+        <SelectTrigger className="w-36 bg-zinc-900 border-zinc-800 text-zinc-300">
+          <SelectValue placeholder="WPN Level" />
+        </SelectTrigger>
+        <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectItem value="all" className="text-zinc-400">
+            All WPN levels
+          </SelectItem>
+          {wpnLevels.map((w) => (
+            <SelectItem key={w} value={w} className="text-zinc-200">
+              {w}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {hasFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-zinc-500 hover:text-zinc-300"
+          onClick={() => router.push("/")}
+        >
+          Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}

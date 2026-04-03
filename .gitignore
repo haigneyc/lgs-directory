@@ -41,3 +41,7 @@ uv.lock
 
 # Data cache (scraper output)
 data/
+.superpowers/
+.superpowers/
+web/.next/
+web/node_modules/
