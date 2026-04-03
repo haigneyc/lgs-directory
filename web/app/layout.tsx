@@ -29,6 +29,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full dark`}
     >
+      <head>
+        <meta name="impact-site-verification" content="a353081c-3a4d-42f0-a3d7-b95126dbf90a" />
+      </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50 antialiased">
         <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
           <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
