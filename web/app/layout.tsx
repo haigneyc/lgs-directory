@@ -31,6 +31,14 @@ export default function RootLayout({
     >
       <head>
         <meta name="impact-site-verification" content="a353081c-3a4d-42f0-a3d7-b95126dbf90a" />
+        {/* Google Analytics - hardcoded gtag snippet, no user input, safe for inline script */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-WD7RC5SPMY"></script>
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WD7RC5SPMY');
+        `}} />
       </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50 antialiased">
         <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
