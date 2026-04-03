@@ -24,21 +24,36 @@ _RATE_LIMIT_SECS = 0.5  # 2 req/sec
 _MAX_STORES = 10_000
 
 BLOCKED_DOMAINS = {
-    "warhammer.com",
-    "games-workshop.com",
+    # Social media / marketplaces
     "facebook.com",
     "fb.com",
-    "ebay.com",
-    "tcgplayer.com",
-    "amazon.com",
-    "etsy.com",
     "instagram.com",
     "twitter.com",
     "x.com",
     "youtube.com",
     "tiktok.com",
+    "ebay.com",
+    "amazon.com",
+    "etsy.com",
+    "tcgplayer.com",
     "yelp.com",
     "google.com",
+    # Corporate / chain stores (not LGS)
+    "warhammer.com",
+    "games-workshop.com",
+    "gamestop.com",
+    "hobbylobby.com",
+    "hobbytown.com",
+    "2ndandcharles.com",
+    "learningexpress.com",
+    "scientificgames.com",
+    "drafthouse.com",
+    # Wizards of the Coast (not store websites)
+    "wizards.com",
+    "locator.wizards.com",
+    # Other non-store sites
+    "sportscard-stores.com",
+    "perfectgame.org",
 }
 
 
