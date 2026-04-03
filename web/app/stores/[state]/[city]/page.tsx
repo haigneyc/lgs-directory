@@ -30,7 +30,7 @@ export async function generateMetadata(
   console.assert(typeof citySlug === "string", "generateMetadata: citySlug must be a string");
 
   if (stateName === null) {
-    return { title: "Not Found | LGS Directory" };
+    return { title: "Not Found | Roll For Store" };
   }
 
   const abbrev = slugToAbbreviation(stateSlug);
@@ -38,10 +38,10 @@ export async function generateMetadata(
   const initialResult = await listStores({ state: abbrev ?? undefined, city: cityName });
 
   if (initialResult.total === 0) {
-    return { title: "Not Found | LGS Directory" };
+    return { title: "Not Found | Roll For Store" };
   }
 
-  const title = `Game Stores in ${cityName}, ${abbrev} | LGS Directory`;
+  const title = `Game Stores in ${cityName}, ${abbrev} | Roll For Store`;
   const description = `Browse ${initialResult.total} local game stores in ${cityName}, ${abbrev}. Find WPN-certified stores, online sellers, and more.`;
 
   return {

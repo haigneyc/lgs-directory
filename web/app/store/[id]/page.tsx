@@ -21,11 +21,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const store = await getStore(id);
 
   if (!store) {
-    return { title: "Store Not Found | LGS Directory" };
+    return { title: "Store Not Found | Roll For Store" };
   }
 
   return {
-    title: `${store.name} | LGS Directory`,
+    title: `${store.name} | Roll For Store`,
     description: `${store.name} in ${store.address.city}, ${store.address.state}. View hours, online presence, and WPN status.`,
   };
 }

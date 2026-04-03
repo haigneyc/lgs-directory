@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LGS Directory",
-  description: "US Local Game Store Online Presence Directory",
+  title: "Roll For Store",
+  description: "Find local game stores near you",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
               href="/"
               className="font-semibold text-lg tracking-tight"
             >
-              LGS Directory
+              Roll For Store
             </Link>
             <div className="flex items-center gap-6 text-sm text-zinc-400">
               <Link href="/" className="hover:text-zinc-50 transition-colors">

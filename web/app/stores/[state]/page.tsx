@@ -29,13 +29,13 @@ export async function generateMetadata(
   console.assert(stateSlug.length > 0, "generateMetadata: stateSlug must not be empty");
 
   if (stateName === null) {
-    return { title: "Not Found | LGS Directory" };
+    return { title: "Not Found | Roll For Store" };
   }
 
   const abbrev = slugToAbbreviation(stateSlug);
   const initialResult = await listStores({ state: abbrev ?? undefined });
 
-  const title = `Game Stores in ${stateName} | LGS Directory`;
+  const title = `Game Stores in ${stateName} | Roll For Store`;
   const description = `Browse ${initialResult.total} local game stores in ${stateName}. Find WPN-certified stores, online sellers, and more.`;
 
   return {

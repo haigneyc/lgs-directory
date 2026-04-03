@@ -1,4 +1,4 @@
-const LLMS_CONTENT = `# LGS Directory
+const LLMS_CONTENT = `# Roll For Store
 > A comprehensive directory of local game stores in the United States.
 
 ## What this site contains
