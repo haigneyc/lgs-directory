@@ -51,6 +51,14 @@ export default function RootLayout({
               >
                 Near Me
               </Link>
+              <a
+                href="https://hollowhag.tcgplayerpro.com/"
+                target="_blank"
+                rel="noopener"
+                className="text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                Shop Cards
+              </a>
             </div>
           </nav>
         </header>
