@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
 import { getStore, getStoreEnrichment, getStoreContent } from "@/lib/queries";
 import { stateToSlug, cityToSlug, abbreviationToStateName } from "@/lib/slugs";
-import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
+import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
 import { PresenceTable } from "@/components/presence-table";
 import { formatAddress, formatDate, formatProduct } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +75,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <StoreStatusBadge status={store.status} />
           <WpnBadge level={store.wpn_level} />
+          <OnlineSellerBadge sellsSingles={store.presences.some((p) => p.sells_mtg_singles === true)} />
         </div>
       </div>
 

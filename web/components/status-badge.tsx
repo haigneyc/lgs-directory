@@ -6,26 +6,31 @@ import {
 } from "@/components/ui/tooltip";
 import type { StoreStatus, WpnLevel, PresenceStatus } from "@/lib/types";
 
-const statusConfig: Record<StoreStatus, { color: string; description: string }> = {
+const statusConfig: Record<StoreStatus, { label: string; color: string; description: string }> = {
   candidate: {
+    label: "Discovered",
     color: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
-    description: "Discovered but not yet validated",
+    description: "Found via WPN or Google Places, not yet confirmed",
   },
   verified: {
+    label: "Verified",
     color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-    description: "Confirmed to exist with a working website",
+    description: "Confirmed to be a real, operating store",
   },
   active: {
-    color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    description: "Fully validated — online, sells MTG singles",
+    label: "Verified",
+    color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    description: "Confirmed to be a real, operating store",
   },
   unresponsive: {
-    color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    description: "Website is down or unreachable",
+    label: "Discovered",
+    color: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+    description: "Found via WPN or Google Places, not yet confirmed",
   },
   closed: {
+    label: "Closed",
     color: "bg-red-500/15 text-red-400 border-red-500/30",
-    description: "Confirmed permanently closed",
+    description: "Permanently closed",
   },
 };
 
@@ -57,15 +62,27 @@ const presenceConfig: Record<PresenceStatus, { color: string; description: strin
 
 export function StoreStatusBadge({ status }: { status: StoreStatus }) {
   const cfg = statusConfig[status];
+  console.assert(cfg !== undefined, "StoreStatusBadge: unknown status");
+  console.assert(typeof cfg.label === "string", "StoreStatusBadge: cfg.label must be a string");
   return (
     <Tooltip>
       <TooltipTrigger>
         <Badge variant="outline" className={cfg.color}>
-          {status}
+          {cfg.label}
         </Badge>
       </TooltipTrigger>
       <TooltipContent>{cfg.description}</TooltipContent>
     </Tooltip>
+  );
+}
+
+export function OnlineSellerBadge({ sellsSingles }: { sellsSingles: boolean }) {
+  console.assert(typeof sellsSingles === "boolean", "OnlineSellerBadge: sellsSingles must be a boolean");
+  if (!sellsSingles) return null;
+  return (
+    <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20">
+      Online Seller
+    </Badge>
   );
 }
 
