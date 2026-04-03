@@ -131,7 +131,7 @@ export async function getNearbyStores(
      FROM stores
      WHERE latitude IS NOT NULL
        AND longitude IS NOT NULL
-       AND status IN ('active', 'verified')
+       AND status IN ('active', 'verified', 'candidate')
        AND latitude BETWEEN $3 AND $4
        AND longitude BETWEEN $5 AND $6
      ORDER BY distance_miles
