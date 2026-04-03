@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = "https://lgs-directory.com";
+const BASE_URL = "https://rollforstore.com";
 
 export default function robots(): MetadataRoute.Robots {
   console.assert(typeof BASE_URL === "string", "robots: BASE_URL must be a string");

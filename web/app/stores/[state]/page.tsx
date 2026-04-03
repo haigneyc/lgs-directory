@@ -45,7 +45,7 @@ export async function generateMetadata(
       title,
       description,
       type: "website",
-      url: `https://lgs-directory.com/stores/${stateSlug}`,
+      url: `https://rollforstore.com/stores/${stateSlug}`,
     },
   };
 }

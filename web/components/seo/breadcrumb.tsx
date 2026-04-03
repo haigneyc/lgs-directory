@@ -12,7 +12,7 @@ interface BreadcrumbProps {
 }
 
 const MAX_BREADCRUMB_ITEMS = 10;
-const DEFAULT_BASE_URL = "https://lgs-directory.com";
+const DEFAULT_BASE_URL = "https://rollforstore.com";
 
 export function Breadcrumb({ items, baseUrl = DEFAULT_BASE_URL }: BreadcrumbProps) {
   console.assert(Array.isArray(items), "Breadcrumb: items must be an array");

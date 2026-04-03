@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 
-const BASE_URL = "https://lgs-directory.com";
+const BASE_URL = "https://rollforstore.com";
 const MAX_SITEMAP_ENTRIES = 50000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
