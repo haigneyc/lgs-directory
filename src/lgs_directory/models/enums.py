@@ -15,6 +15,15 @@ class StoreStatus(StrEnum):
     CLOSED = "closed"
 
 
+class StoreCategory(StrEnum):
+    """High-level store category / vertical."""
+
+    LGS = "lgs"                    # Local game store (MTG, Pokemon, board games)
+    COMIC_SHOP = "comic_shop"      # Comic book store
+    RETRO_GAMES = "retro_games"    # Retro video game store
+    HOBBY_MINIATURES = "hobby_miniatures"  # Warhammer, miniatures, hobby shop
+
+
 class DiscoverySource(StrEnum):
     """How a store was discovered."""
 
@@ -22,6 +31,10 @@ class DiscoverySource(StrEnum):
     GOOGLE_PLACES = "google_places"
     TCGPLAYER = "tcgplayer"
     MANUAL = "manual"
+    GAMES_WORKSHOP = "games_workshop"
+    COMICBOOKSTORES = "comicbookstores"
+    LEAGUE_COMIC_GEEKS = "league_comic_geeks"
+    VIDEO_GAME_SAGE = "video_game_sage"
 
 
 class WpnLevel(StrEnum):

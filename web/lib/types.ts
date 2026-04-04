@@ -14,11 +14,22 @@ export type StoreStatus = (typeof STORE_STATUSES)[number];
 export const DISCOVERY_SOURCES = [
   "wpn",
   "google_places",
-  "fsq_os",
   "tcgplayer",
   "manual",
+  "games_workshop",
+  "comicbookstores",
+  "league_comic_geeks",
+  "video_game_sage",
 ] as const;
 export type DiscoverySource = (typeof DISCOVERY_SOURCES)[number];
+
+export const STORE_CATEGORIES = [
+  "lgs",
+  "comic_shop",
+  "retro_games",
+  "hobby_miniatures",
+] as const;
+export type StoreCategory = (typeof STORE_CATEGORIES)[number];
 
 export const WPN_LEVELS = ["core", "premium"] as const;
 export type WpnLevel = (typeof WPN_LEVELS)[number];
@@ -131,8 +142,14 @@ export interface OnlineStore {
   estimated_inventory_size: InventorySize | null;
 }
 
+export interface HoursPeriod {
+  open: { day: number; hour: number; minute: number };
+  close: { day: number; hour: number; minute: number };
+}
+
 export interface StoreEnrichment {
   hours_weekday_text: string[] | null;
+  hours_periods: HoursPeriod[] | null;
   rating: number | null;
   user_rating_count: number | null;
   photo_refs: string[] | null;

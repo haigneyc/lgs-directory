@@ -19,9 +19,10 @@ export default async function HomePage({ searchParams }: PageProps) {
   const status = typeof params.status === "string" ? params.status : undefined;
   const wpnLevel = typeof params.wpn === "string" ? params.wpn : undefined;
   const search = typeof params.q === "string" ? params.q : undefined;
+  const category = typeof params.category === "string" ? params.category : undefined;
 
   const [initialResult, filterOptions, states] = await Promise.all([
-    listStores({ page: rawPage, state, status, wpnLevel, search }),
+    listStores({ page: rawPage, state, status, wpnLevel, search, category }),
     getFilterOptions(),
     getStateIndex(),
   ]);
@@ -35,7 +36,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const result =
     safePage === rawPage
       ? initialResult
-      : await listStores({ page: safePage, state, status, wpnLevel, search });
+      : await listStores({ page: safePage, state, status, wpnLevel, search, category });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -53,6 +54,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           states={filterOptions.states}
           statuses={filterOptions.statuses}
           wpnLevels={filterOptions.wpnLevels}
+          categories={filterOptions.categories}
         />
       </Suspense>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_URL } from "@/lib/site";
 import { JsonLd } from "./json-ld";
 
 export interface BreadcrumbItem {
@@ -12,7 +13,7 @@ interface BreadcrumbProps {
 }
 
 const MAX_BREADCRUMB_ITEMS = 10;
-const DEFAULT_BASE_URL = "https://rollforstore.com";
+const DEFAULT_BASE_URL = SITE_URL;
 
 export function Breadcrumb({ items, baseUrl = DEFAULT_BASE_URL }: BreadcrumbProps) {
   console.assert(Array.isArray(items), "Breadcrumb: items must be an array");

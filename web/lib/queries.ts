@@ -10,6 +10,8 @@ import type {
   OnlineStore,
   StoreEnrichment,
   StoreContent,
+  StoreCategory,
+  HoursPeriod,
 } from "./types";
 
 const PAGE_SIZE = 25;
@@ -22,6 +24,7 @@ interface ListStoresParams {
   wpnLevel?: string;
   sellsSingles?: boolean;
   search?: string;
+  category?: string;
 }
 
 interface ListStoresResult {
@@ -67,6 +70,13 @@ export async function listStores(
   if (params.search) {
     conditions.push(`name ILIKE $${idx++}`);
     values.push(`%${params.search}%`);
+  }
+  if (params.category) {
+    conditions.push(`id IN (
+      SELECT store_id FROM store_categories
+      WHERE category = $${idx++}
+    )`);
+    values.push(params.category);
   }
 
   const where =
@@ -147,8 +157,9 @@ export async function getFilterOptions(): Promise<{
   states: string[];
   statuses: string[];
   wpnLevels: string[];
+  categories: string[];
 }> {
-  const [stateRows, statusRows, wpnRows] = await Promise.all([
+  const [stateRows, statusRows, wpnRows, categoryRows] = await Promise.all([
     query<{ state: string }>(
       `SELECT DISTINCT address->>'state' as state FROM stores
        WHERE address->>'state' IS NOT NULL
@@ -162,12 +173,16 @@ export async function getFilterOptions(): Promise<{
        WHERE wpn_level IS NOT NULL
        ORDER BY wpn_level`
     ),
+    query<{ category: string }>(
+      `SELECT DISTINCT category FROM store_categories ORDER BY category`
+    ).catch(() => [] as { category: string }[]),
   ]);
 
   return {
     states: stateRows.map((r) => r.state),
     statuses: statusRows.map((r) => r.status),
     wpnLevels: wpnRows.map((r) => r.wpn_level),
+    categories: categoryRows.map((r) => r.category),
   };
 }
 
@@ -395,6 +410,52 @@ export async function getNearbyCities(
   return result;
 }
 
+function isValidTimepoint(
+  tp: unknown
+): tp is { day: number; hour: number; minute: number } {
+  if (typeof tp !== "object" || tp === null) {
+    return false;
+  }
+  const obj = tp as Record<string, unknown>;
+  const dayValid =
+    typeof obj.day === "number" && obj.day >= 0 && obj.day <= 6;
+  const hourValid =
+    typeof obj.hour === "number" && obj.hour >= 0 && obj.hour <= 23;
+  const minuteValid =
+    typeof obj.minute === "number" && obj.minute >= 0 && obj.minute <= 59;
+  return dayValid && hourValid && minuteValid;
+}
+
+function parsePeriods(rawPeriods: unknown): HoursPeriod[] | null {
+  console.assert(
+    rawPeriods === undefined || rawPeriods === null || Array.isArray(rawPeriods),
+    "parsePeriods: rawPeriods must be an array, null, or undefined"
+  );
+
+  if (!Array.isArray(rawPeriods)) {
+    return null;
+  }
+
+  const result: HoursPeriod[] = [];
+  const limit = Math.min(rawPeriods.length, 14);
+  for (let i = 0; i < limit; i++) {
+    const entry = rawPeriods[i] as Record<string, unknown>;
+    if (isValidTimepoint(entry.open) && isValidTimepoint(entry.close)) {
+      result.push({
+        open: { day: entry.open.day, hour: entry.open.hour, minute: entry.open.minute },
+        close: { day: entry.close.day, hour: entry.close.hour, minute: entry.close.minute },
+      });
+    }
+  }
+
+  console.assert(
+    result.length <= 14,
+    "parsePeriods: result should have at most 14 periods"
+  );
+
+  return result.length > 0 ? result : null;
+}
+
 function parseEnrichmentPayload(
   payload: Record<string, unknown>
 ): StoreEnrichment {
@@ -405,11 +466,15 @@ function parseEnrichmentPayload(
 
   const hours = payload.hours as Record<string, unknown> | undefined;
   const weekdayText = hours?.weekday_text;
+  const rawPeriods = hours?.periods;
+
+  const parsedPeriods = parsePeriods(rawPeriods);
 
   const enrichment: StoreEnrichment = {
     hours_weekday_text: Array.isArray(weekdayText)
       ? (weekdayText as string[])
       : null,
+    hours_periods: parsedPeriods,
     rating: typeof payload.rating === "number" ? payload.rating : null,
     user_rating_count:
       typeof payload.user_rating_count === "number"
@@ -618,4 +683,88 @@ export async function getStoreContents(
     // Table may not have data yet -- degrade gracefully
     return contentMap;
   }
+}
+
+export async function getStoreCategories(
+  storeId: string
+): Promise<StoreCategory[]> {
+  console.assert(
+    typeof storeId === "string" && storeId.length > 0,
+    "getStoreCategories: storeId must be a non-empty string"
+  );
+
+  const rows = await query<{ category: string }>(
+    `SELECT category FROM store_categories WHERE store_id = $1`,
+    [storeId]
+  );
+
+  console.assert(Array.isArray(rows), "getStoreCategories: rows must be an array");
+  return rows.map((r) => r.category as StoreCategory);
+}
+
+interface ListStoresByCategoryResult {
+  stores: Store[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function listStoresByCategory(
+  category: string,
+  params: { page?: number; state?: string; city?: string }
+): Promise<ListStoresByCategoryResult> {
+  console.assert(
+    typeof category === "string" && category.length > 0,
+    "listStoresByCategory: category must be a non-empty string"
+  );
+
+  const page = params.page ?? 1;
+  console.assert(page >= 1, "listStoresByCategory: page must be >= 1");
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const conditions: string[] = [
+    `id IN (SELECT store_id FROM store_categories WHERE category = $1)`,
+  ];
+  const values: unknown[] = [category];
+  let idx = 2;
+
+  if (params.state) {
+    conditions.push(`address->>'state' = $${idx++}`);
+    values.push(params.state.toUpperCase());
+  }
+  if (params.city) {
+    conditions.push(`UPPER(address->>'city') = UPPER($${idx++})`);
+    values.push(params.city);
+  }
+
+  const where = `WHERE ${conditions.join(" AND ")}`;
+
+  const countRows = await query<{ total: number }>(
+    `SELECT count(*)::int as total FROM stores ${where}`,
+    values
+  );
+  const total = countRows[0]?.total ?? 0;
+
+  const stores = await query<Store>(
+    `SELECT * FROM stores ${where}
+     ORDER BY name ASC
+     LIMIT $${idx++} OFFSET $${idx++}`,
+    [...values, PAGE_SIZE, offset]
+  );
+
+  return { stores, total, page, pageSize: PAGE_SIZE };
+}
+
+export async function getCategoryStats(): Promise<
+  { category: string; count: number }[]
+> {
+  const rows = await query<{ category: string; count: number }>(
+    `SELECT category, count(*)::int as count
+     FROM store_categories
+     GROUP BY category
+     ORDER BY count DESC`
+  );
+
+  console.assert(Array.isArray(rows), "getCategoryStats: rows must be an array");
+  return rows;
 }

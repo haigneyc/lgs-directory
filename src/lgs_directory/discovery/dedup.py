@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import IntEnum
+from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from thefuzz import fuzz  # type: ignore[import-untyped]
 
 from lgs_directory.discovery.normalize import normalize_address, normalize_name
 from lgs_directory.models.store import Store
+from lgs_directory.models.store_external_ref import StoreExternalRef
 
 
 class MatchTier(IntEnum):
@@ -200,3 +205,95 @@ def find_duplicate(
         confidence=0.0,
         needs_review=False,
     )
+
+
+def find_by_external_ref(
+    provider: str,
+    external_id: str,
+    session: Session,
+) -> Store | None:
+    """Fast exact-match lookup via the store_external_refs table.
+
+    Returns the Store linked to the given (provider, external_id) pair,
+    or None if no match exists. This is checked BEFORE the slower
+    address/name/proximity dedup in find_duplicate().
+
+    Args:
+        provider: The external provider name (e.g., "games_workshop").
+        external_id: The provider-specific store identifier.
+        session: Active SQLAlchemy session.
+
+    Returns:
+        The matched Store, or None.
+    """
+    assert isinstance(provider, str) and len(provider) > 0
+    assert isinstance(external_id, str) and len(external_id) > 0
+
+    stmt = (
+        select(StoreExternalRef)
+        .where(
+            StoreExternalRef.provider == provider,
+            StoreExternalRef.external_id == external_id,
+        )
+        .limit(1)
+    )
+    ref = session.execute(stmt).scalar_one_or_none()
+
+    if ref is None:
+        return None
+
+    assert isinstance(ref, StoreExternalRef)
+
+    store_stmt = select(Store).where(Store.id == ref.store_id).limit(1)
+    store = session.execute(store_stmt).scalar_one_or_none()
+    assert store is None or isinstance(store, Store)
+    return store
+
+
+def upsert_external_ref(
+    store_id: UUID,
+    provider: str,
+    external_id: str,
+    session: Session,
+) -> StoreExternalRef:
+    """Create or update an external ref linking a store to a provider ID.
+
+    If the (provider, external_id) pair already exists, updates last_seen.
+    Otherwise, inserts a new row.
+
+    Args:
+        store_id: UUID of the store.
+        provider: The external provider name.
+        external_id: The provider-specific store identifier.
+        session: Active SQLAlchemy session.
+
+    Returns:
+        The StoreExternalRef (new or updated).
+    """
+    assert provider and len(provider) > 0
+    assert external_id and len(external_id) > 0
+
+    stmt = (
+        select(StoreExternalRef)
+        .where(
+            StoreExternalRef.provider == provider,
+            StoreExternalRef.external_id == external_id,
+        )
+        .limit(1)
+    )
+    existing = session.execute(stmt).scalar_one_or_none()
+
+    if existing is not None:
+        assert isinstance(existing, StoreExternalRef)
+        existing.last_seen = datetime.now(tz=UTC)
+        existing.store_id = store_id
+        return existing
+
+    ref = StoreExternalRef(
+        store_id=store_id,
+        provider=provider,
+        external_id=external_id,
+    )
+    session.add(ref)
+    assert ref.provider == provider
+    return ref

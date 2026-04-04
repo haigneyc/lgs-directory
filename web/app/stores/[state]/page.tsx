@@ -10,6 +10,7 @@ import { StoreTable } from "@/components/store-table";
 import { Pagination } from "@/components/pagination";
 import { CityGrid } from "@/components/city-grid";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
+import { SITE_URL } from "@/lib/site";
 import type { StoreWithDistance } from "@/lib/types";
 
 export const revalidate = 86400;
@@ -45,7 +46,7 @@ export async function generateMetadata(
       title,
       description,
       type: "website",
-      url: `https://rollforstore.com/stores/${stateSlug}`,
+      url: `${SITE_URL}/stores/${stateSlug}`,
     },
   };
 }

@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
+import { SITE_URL } from "@/lib/site";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 
-const BASE_URL = "https://rollforstore.com";
+const BASE_URL = SITE_URL;
 const MAX_SITEMAP_ENTRIES = 50000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -18,7 +19,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
   });
 
-  // 2. State pages
+  // 2. Category pages (comics, retro-games, warhammer)
+  const categoryPaths = ["/comics", "/retro-games", "/warhammer"];
+  console.assert(Array.isArray(categoryPaths), "sitemap: categoryPaths must be an array");
+
+  for (let i = 0; i < categoryPaths.length; i++) {
+    entries.push({
+      url: `${BASE_URL}${categoryPaths[i]}`,
+      priority: 0.9,
+      changeFrequency: "weekly",
+    });
+  }
+
+  // 3. State pages
   const stateRows = await query<{ state: string }>(
     `SELECT DISTINCT address->>'state' AS state
      FROM stores
@@ -39,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 3. City pages (2+ stores)
+  // 4. City pages (2+ stores)
   const cityRows = await query<{ state: string; city: string }>(
     `SELECT address->>'state' AS state, address->>'city' AS city
      FROM stores
@@ -64,7 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 4. Store detail pages
+  // 5. Store detail pages
   const storeRows = await query<{ id: string }>(
     `SELECT id FROM stores ORDER BY id`
   );

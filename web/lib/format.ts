@@ -72,3 +72,28 @@ export function formatRating(rating: number, count: number): string {
   );
   return `\u2605 ${rating.toFixed(1)} (${count})`;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  lgs: "Local Game Store",
+  comic_shop: "Comic Book Store",
+  retro_games: "Retro Video Game Store",
+  hobby_miniatures: "Warhammer & Hobby Shop",
+};
+
+export function formatCategory(key: string): string {
+  console.assert(typeof key === "string", "formatCategory: key must be a string");
+  console.assert(key.length > 0, "formatCategory: key must not be empty");
+  return CATEGORY_LABELS[key] ?? key;
+}
+
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  lgs: "Local game stores selling Magic: The Gathering, Pokemon, board games, and more.",
+  comic_shop: "Comic book stores carrying new releases, back issues, graphic novels, and collectibles.",
+  retro_games: "Retro video game stores specializing in classic consoles, cartridges, and vintage gaming.",
+  hobby_miniatures: "Warhammer, miniatures, and hobby shops for tabletop wargaming enthusiasts.",
+};
+
+export function getCategoryDescription(key: string): string {
+  console.assert(typeof key === "string", "getCategoryDescription: key must be a string");
+  return CATEGORY_DESCRIPTIONS[key] ?? "";
+}

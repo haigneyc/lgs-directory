@@ -20,6 +20,9 @@ _SEARCH_CATEGORIES = [
     "hobby shop",
     "card game store",
     "comic book store",
+    "retro video game store",
+    "used video game store",
+    "warhammer store",
 ]
 
 # 1-degree grid over contiguous US
@@ -143,9 +146,7 @@ class GooglePlacesScraper:
         assert isinstance(data, dict), "API response must be a dict"
         return data
 
-    def _generate_grid_cells(
-        self, limit_cells: int | None = None
-    ) -> list[tuple[float, float]]:
+    def _generate_grid_cells(self, limit_cells: int | None = None) -> list[tuple[float, float]]:
         """Generate lat/lng grid cell centers covering the contiguous US."""
         cells: list[tuple[float, float]] = []
         lat = _US_LAT_MIN
@@ -183,7 +184,8 @@ class GooglePlacesScraper:
 
         logger.info(
             "Scanning %d grid cells across %d categories (max %s requests)",
-            len(cells), len(_SEARCH_CATEGORIES),
+            len(cells),
+            len(_SEARCH_CATEGORIES),
             max_requests if max_requests is not None else "unlimited",
         )
 
@@ -220,7 +222,10 @@ class GooglePlacesScraper:
                         request_count += 1
                         logger.warning(
                             "API error for cell (%s, %s) %s: %s",
-                            lat, lng, category, exc,
+                            lat,
+                            lng,
+                            category,
+                            exc,
                         )
                         break
 
@@ -245,12 +250,16 @@ class GooglePlacesScraper:
             if (cell_idx + 1) % 50 == 0:
                 logger.info(
                     "Scanned %d / %d cells, found %d unique places (%d requests)",
-                    cell_idx + 1, len(cells), len(all_places), request_count,
+                    cell_idx + 1,
+                    len(cells),
+                    len(all_places),
+                    request_count,
                 )
 
         logger.info(
             "Total unique places found: %d (%d API requests)",
-            len(all_places), request_count,
+            len(all_places),
+            request_count,
         )
         assert isinstance(all_places, list)
         return all_places

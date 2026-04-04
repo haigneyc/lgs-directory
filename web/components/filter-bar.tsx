@@ -11,15 +11,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { formatCategory } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 interface FilterBarProps {
   states: string[];
   statuses: string[];
   wpnLevels: string[];
+  categories: string[];
 }
 
-export function FilterBar({ states, statuses, wpnLevels }: FilterBarProps) {
+export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -40,6 +42,7 @@ export function FilterBar({ states, statuses, wpnLevels }: FilterBarProps) {
   const currentState = searchParams.get("state") ?? "";
   const currentStatus = searchParams.get("status") ?? "";
   const currentWpn = searchParams.get("wpn") ?? "";
+  const currentCategory = searchParams.get("category") ?? "";
   const currentSearch = searchParams.get("q") ?? "";
   const [searchText, setSearchText] = useState(currentSearch);
 
@@ -48,7 +51,7 @@ export function FilterBar({ states, statuses, wpnLevels }: FilterBarProps) {
     setParam("q", trimmed || null);
   }, [searchText, setParam]);
 
-  const hasFilters = currentState || currentStatus || currentWpn || currentSearch;
+  const hasFilters = currentState || currentStatus || currentWpn || currentCategory || currentSearch;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -127,6 +130,25 @@ export function FilterBar({ states, statuses, wpnLevels }: FilterBarProps) {
           {wpnLevels.map((w) => (
             <SelectItem key={w} value={w} className="text-zinc-200">
               {w}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={currentCategory || "all"}
+        onValueChange={(v) => setParam("category", v)}
+      >
+        <SelectTrigger className="w-40 bg-zinc-900 border-zinc-800 text-zinc-300">
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectItem value="all" className="text-zinc-400">
+            All categories
+          </SelectItem>
+          {categories.map((c) => (
+            <SelectItem key={c} value={c} className="text-zinc-200">
+              {formatCategory(c)}
             </SelectItem>
           ))}
         </SelectContent>

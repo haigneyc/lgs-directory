@@ -8,8 +8,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
+import { HoursBadge } from "@/components/hours-badge";
 import { formatCityState } from "@/lib/format";
 import type { Store, StoreEnrichment } from "@/lib/types";
+
+const MAX_TABLE_ROWS = 100;
 
 interface StoreTableProps {
   stores: Store[];
@@ -51,6 +54,9 @@ export function StoreTable({ stores, enrichments }: StoreTableProps) {
         <TableRow className="border-zinc-800 hover:bg-transparent">
           <TableHead className="text-zinc-400">Name</TableHead>
           <TableHead className="text-zinc-400">Location</TableHead>
+          {enrichments !== undefined && (
+            <TableHead className="text-zinc-400">Hours</TableHead>
+          )}
           {hasAnyRating && (
             <TableHead className="text-zinc-400">Rating</TableHead>
           )}
@@ -60,7 +66,7 @@ export function StoreTable({ stores, enrichments }: StoreTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {stores.map((store) => {
+        {stores.slice(0, MAX_TABLE_ROWS).map((store) => {
           const enrichment = enrichments?.get(store.id);
           return (
             <TableRow key={store.id} className="border-zinc-800 hover:bg-zinc-900/50">
@@ -75,6 +81,15 @@ export function StoreTable({ stores, enrichments }: StoreTableProps) {
               <TableCell className="text-zinc-400">
                 {formatCityState(store.address)}
               </TableCell>
+              {enrichments !== undefined && (
+                <TableCell>
+                  <HoursBadge
+                    periods={enrichment?.hours_periods ?? null}
+                    weekdayText={enrichment?.hours_weekday_text ?? null}
+                    variant="compact"
+                  />
+                </TableCell>
+              )}
               {hasAnyRating && (
                 <TableCell className="text-sm">
                   {enrichment?.rating !== null && enrichment?.rating !== undefined ? (

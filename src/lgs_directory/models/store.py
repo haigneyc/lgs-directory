@@ -15,6 +15,7 @@ from lgs_directory.models.enums import DiscoverySource, StoreStatus, WpnLevel
 
 if TYPE_CHECKING:
     from lgs_directory.models.online_presence import OnlinePresence
+    from lgs_directory.models.store_category import StoreCategoryLink
     from lgs_directory.models.validation_log import ValidationLog
 
 
@@ -40,7 +41,7 @@ class Store(Base):
         default=StoreStatus.CANDIDATE,
     )
     discovery_source: Mapped[DiscoverySource] = mapped_column(
-        String(20),
+        String(30),
         default=DiscoverySource.MANUAL,
     )
     first_seen: Mapped[datetime] = mapped_column(server_default=text("now()"))
@@ -53,6 +54,10 @@ class Store(Base):
         cascade="all, delete-orphan",
     )
     validation_logs: Mapped[list[ValidationLog]] = relationship(
+        back_populates="store",
+        cascade="all, delete-orphan",
+    )
+    category_links: Mapped[list[StoreCategoryLink]] = relationship(
         back_populates="store",
         cascade="all, delete-orphan",
     )

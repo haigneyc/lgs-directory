@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
-import { getStore, getStoreEnrichment, getStoreContent } from "@/lib/queries";
+import { getStore, getStoreEnrichment, getStoreContent, getStoreCategories } from "@/lib/queries";
 import { stateToSlug, cityToSlug, abbreviationToStateName } from "@/lib/slugs";
 import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
+import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
-import { formatAddress, formatDate, formatProduct } from "@/lib/format";
+import { formatAddress, formatDate, formatProduct, formatCategory } from "@/lib/format";
+import { StoreFaq } from "@/components/seo/store-faq";
+import { generateStoreFaq, buildFaqJsonLd } from "@/lib/faq";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -32,15 +35,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function StoreDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [store, enrichment, storeContent] = await Promise.all([
+  const [store, enrichment, storeContent, categories] = await Promise.all([
     getStore(id),
     getStoreEnrichment(id),
     getStoreContent(id),
+    getStoreCategories(id),
   ]);
 
   if (!store) {
     notFound();
   }
+
+  const faqItems = generateStoreFaq({ store, enrichment, storeContent });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -71,6 +77,13 @@ export default async function StoreDetailPage({ params }: PageProps) {
           {store.phone && (
             <p className="text-zinc-500 text-sm mt-1">{store.phone}</p>
           )}
+          <div className="mt-2">
+            <HoursBadge
+              periods={enrichment?.hours_periods ?? null}
+              weekdayText={enrichment?.hours_weekday_text ?? null}
+              variant="detail"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <StoreStatusBadge status={store.status} />
@@ -78,6 +91,16 @@ export default async function StoreDetailPage({ params }: PageProps) {
           <OnlineSellerBadge sellsSingles={store.presences.some((p) => p.sells_mtg_singles === true)} />
         </div>
       </div>
+
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {categories.map((cat) => (
+            <Badge key={cat} variant="outline">
+              {formatCategory(cat)}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card className="bg-zinc-900 border-zinc-800">
@@ -209,6 +232,13 @@ export default async function StoreDetailPage({ params }: PageProps) {
         </div>
       </div>
 
+      {faqItems.length > 0 && (
+        <>
+          <Separator className="bg-zinc-800 my-8" />
+          <StoreFaq items={faqItems} storeName={store.name} />
+        </>
+      )}
+
       {store.notes && (
         <>
           <Separator className="bg-zinc-800 my-8" />
@@ -221,13 +251,26 @@ export default async function StoreDetailPage({ params }: PageProps) {
         </>
       )}
 
-      <JsonLd data={buildLocalBusinessJsonLd(store)} />
+      <JsonLd data={buildLocalBusinessJsonLd(store, enrichment)} />
+      {faqItems.length > 0 && <JsonLd data={buildFaqJsonLd(faqItems)} />}
     </div>
   );
 }
 
+/** Schema.org day names indexed by Google Places day number (0=Sunday). */
+const SCHEMA_DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
 function buildLocalBusinessJsonLd(
-  store: Awaited<ReturnType<typeof getStore>> & object
+  store: Awaited<ReturnType<typeof getStore>> & object,
+  enrichment: Awaited<ReturnType<typeof getStoreEnrichment>>
 ): Record<string, unknown> {
   console.assert(store !== null, "buildLocalBusinessJsonLd: store must not be null");
   console.assert(typeof store.name === "string", "buildLocalBusinessJsonLd: store.name must be a string");
@@ -263,6 +306,37 @@ function buildLocalBusinessJsonLd(
 
   if (websitePresence) {
     data.url = websitePresence.url;
+  }
+
+  // Add OpeningHoursSpecification from periods data
+  if (enrichment?.hours_periods !== null && enrichment?.hours_periods !== undefined && enrichment.hours_periods.length > 0) {
+    const specs: Record<string, unknown>[] = [];
+    const limit = Math.min(enrichment.hours_periods.length, 14);
+    for (let i = 0; i < limit; i++) {
+      const period = enrichment.hours_periods[i];
+      if (period.open.day < 0 || period.open.day > 6) {
+        continue;
+      }
+      const dayName = SCHEMA_DAY_NAMES[period.open.day];
+      const opens = `${period.open.hour.toString().padStart(2, "0")}:${period.open.minute.toString().padStart(2, "0")}`;
+      const closes = `${period.close.hour.toString().padStart(2, "0")}:${period.close.minute.toString().padStart(2, "0")}`;
+      specs.push({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: dayName,
+        opens,
+        closes,
+      });
+    }
+    data.openingHoursSpecification = specs;
+  }
+
+  // Add aggregate rating
+  if (enrichment?.rating !== null && enrichment?.rating !== undefined && enrichment?.user_rating_count !== null && enrichment?.user_rating_count !== undefined) {
+    data.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: enrichment.rating,
+      reviewCount: enrichment.user_rating_count,
+    };
   }
 
   return data;

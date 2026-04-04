@@ -38,4 +38,7 @@ class StoreExternalRef(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<StoreExternalRef(store_id={self.store_id!r}, provider={self.provider!r}, external_id={self.external_id!r})>"
+        return (
+            f"<StoreExternalRef(store_id={self.store_id!r}, "
+            f"provider={self.provider!r}, external_id={self.external_id!r})>"
+        )

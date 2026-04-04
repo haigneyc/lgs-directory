@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lgs_directory.discovery.ingest import _create_store_from_raw, _is_blocked_url
+from lgs_directory.discovery.ingest import _create_store_from_raw, is_blocked_url
 from lgs_directory.discovery.wpn import WpnStoreRaw
 from lgs_directory.schemas import AddressSchema
 
@@ -32,37 +32,37 @@ def _make_addr() -> AddressSchema:
 
 
 class TestIsBlockedUrl:
-    """Tests for the _is_blocked_url helper."""
+    """Tests for the is_blocked_url helper."""
 
     def test_magic_wizards_blocked(self) -> None:
-        assert _is_blocked_url("https://magic.wizards.com/en") is True
+        assert is_blocked_url("https://magic.wizards.com/en") is True
 
     def test_wpn_wizards_blocked(self) -> None:
-        assert _is_blocked_url("https://wpn.wizards.com/en/store/123") is True
+        assert is_blocked_url("https://wpn.wizards.com/en/store/123") is True
 
     def test_locator_wizards_blocked(self) -> None:
-        assert _is_blocked_url("https://locator.wizards.com") is True
+        assert is_blocked_url("https://locator.wizards.com") is True
 
     def test_bare_wizards_blocked(self) -> None:
-        assert _is_blocked_url("https://wizards.com/something") is True
+        assert is_blocked_url("https://wizards.com/something") is True
 
     def test_www_wizards_blocked(self) -> None:
-        assert _is_blocked_url("https://www.wizards.com") is True
+        assert is_blocked_url("https://www.wizards.com") is True
 
     def test_normal_url_not_blocked(self) -> None:
-        assert _is_blocked_url("https://coolstoreinc.com") is False
+        assert is_blocked_url("https://coolstoreinc.com") is False
 
     def test_another_normal_url(self) -> None:
-        assert _is_blocked_url("https://www.moxboardinghouse.com/") is False
+        assert is_blocked_url("https://www.moxboardinghouse.com/") is False
 
     def test_empty_string(self) -> None:
-        assert _is_blocked_url("") is False
+        assert is_blocked_url("") is False
 
     def test_malformed_url(self) -> None:
-        assert _is_blocked_url("not-a-url") is False
+        assert is_blocked_url("not-a-url") is False
 
     def test_similar_domain_not_blocked(self) -> None:
-        assert _is_blocked_url("https://notwizards.com") is False
+        assert is_blocked_url("https://notwizards.com") is False
 
 
 class TestCreateStoreFromRaw:

@@ -11,6 +11,7 @@ import { Pagination } from "@/components/pagination";
 import { OnlineStoresCard } from "@/components/online-stores-card";
 import { NearbyCities } from "@/components/nearby-cities";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
+import { SITE_URL } from "@/lib/site";
 import type { StoreWithDistance } from "@/lib/types";
 
 export const revalidate = 86400;
@@ -51,7 +52,7 @@ export async function generateMetadata(
       title,
       description,
       type: "website",
-      url: `https://rollforstore.com/stores/${stateSlug}/${citySlug}`,
+      url: `${SITE_URL}/stores/${stateSlug}/${citySlug}`,
     },
   };
 }

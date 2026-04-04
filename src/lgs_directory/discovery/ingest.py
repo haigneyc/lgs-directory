@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from lgs_directory.discovery.categories import assign_categories, get_default_categories
 from lgs_directory.discovery.dedup import DeduplicationResult, find_duplicate
 from lgs_directory.discovery.normalize import normalize_address
 from lgs_directory.discovery.wpn import WpnStoreRaw
@@ -36,7 +37,7 @@ _BLOCKED_URL_DOMAINS = {
 }
 
 
-def _is_blocked_url(url: str) -> bool:
+def is_blocked_url(url: str) -> bool:
     """Check if URL belongs to a blocked domain (e.g., WotC generic pages)."""
     assert isinstance(url, str), "url must be a string"
 
@@ -138,7 +139,7 @@ def _create_store_from_raw(raw: WpnStoreRaw, addr: AddressSchema) -> Store:
     )
 
     # Seed OnlinePresence with website URL if available (skip WotC generic pages)
-    if raw.website and not _is_blocked_url(raw.website):
+    if raw.website and not is_blocked_url(raw.website):
         presence = OnlinePresence(
             channel_type=ChannelType.WEBSITE,
             url=raw.website,
@@ -201,6 +202,7 @@ def ingest_wpn_stores(
     """
     assert isinstance(raw_stores, list)
     report = IngestReport(total=len(raw_stores))
+    default_categories = get_default_categories(DiscoverySource.WPN)
 
     # Load existing stores once for dedup
     existing_stores = _load_existing_stores(session) if not dry_run else []
@@ -257,7 +259,10 @@ def ingest_wpn_stores(
         if dedup_result.is_match:
             assert dedup_result.matched_store is not None
             # Update existing store if we have new data
-            was_updated = _update_store_from_raw(dedup_result.matched_store, raw)
+            matched_store = dedup_result.matched_store
+            was_updated = _update_store_from_raw(matched_store, raw)
+            if matched_store.id is not None:
+                assign_categories(matched_store.id, default_categories, session)
             if was_updated:
                 report.updated += 1
             else:
@@ -268,6 +273,8 @@ def ingest_wpn_stores(
             session.add(new_store)
             session.flush()
             existing_stores.append(new_store)
+            if new_store.id is not None:
+                assign_categories(new_store.id, default_categories, session)
             report.inserted += 1
 
     logger.info("%s", report)

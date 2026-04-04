@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Roll For Store",
-  description: "Find local game stores near you",
+  description:
+    "Find local game stores, comic shops, retro video game stores, and Warhammer hobby shops near you across the US.",
+  openGraph: {
+    title: "Roll For Store",
+    description:
+      "Find local game stores, comic shops, retro video game stores, and Warhammer hobby shops near you across the US.",
+    type: "website",
+    url: SITE_URL,
+  },
 };
 
 export default function RootLayout({
@@ -51,7 +60,16 @@ export default function RootLayout({
             </Link>
             <div className="flex items-center gap-6 text-sm text-zinc-400">
               <Link href="/" className="hover:text-zinc-50 transition-colors">
-                Browse
+                Game Stores
+              </Link>
+              <Link href="/comics" className="hover:text-zinc-50 transition-colors">
+                Comics
+              </Link>
+              <Link href="/retro-games" className="hover:text-zinc-50 transition-colors">
+                Retro Games
+              </Link>
+              <Link href="/warhammer" className="hover:text-zinc-50 transition-colors">
+                Warhammer
               </Link>
               <Link
                 href="/near-me"

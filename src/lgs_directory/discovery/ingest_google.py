@@ -9,9 +9,10 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from lgs_directory.discovery.categories import assign_categories, get_default_categories
 from lgs_directory.discovery.dedup import DeduplicationResult, find_duplicate
 from lgs_directory.discovery.google_places import GooglePlaceRaw
-from lgs_directory.discovery.ingest import IngestReport, _is_blocked_url
+from lgs_directory.discovery.ingest import IngestReport, is_blocked_url
 from lgs_directory.discovery.normalize import normalize_address
 from lgs_directory.models.enums import (
     ChannelType,
@@ -78,7 +79,7 @@ def _create_store_from_google(raw: GooglePlaceRaw, addr: AddressSchema) -> Store
     )
 
     # Seed OnlinePresence with website URL if available (skip WotC generic pages)
-    if raw.website and not _is_blocked_url(raw.website):
+    if raw.website and not is_blocked_url(raw.website):
         presence = OnlinePresence(
             channel_type=ChannelType.WEBSITE,
             url=raw.website,
@@ -137,6 +138,7 @@ def ingest_google_stores(
     """
     assert isinstance(raw_stores, list)
     report = IngestReport(total=len(raw_stores))
+    default_categories = get_default_categories(DiscoverySource.GOOGLE_PLACES)
 
     # Load existing stores once for dedup
     existing_stores: list[Store] = []
@@ -197,7 +199,10 @@ def ingest_google_stores(
 
         if dedup_result.is_match:
             assert dedup_result.matched_store is not None
-            was_updated = _update_store_from_google(dedup_result.matched_store, raw)
+            matched_store = dedup_result.matched_store
+            was_updated = _update_store_from_google(matched_store, raw)
+            if matched_store.id is not None:
+                assign_categories(matched_store.id, default_categories, session)
             if was_updated:
                 report.updated += 1
             else:
@@ -207,6 +212,8 @@ def ingest_google_stores(
             session.add(new_store)
             session.flush()
             existing_stores.append(new_store)
+            if new_store.id is not None:
+                assign_categories(new_store.id, default_categories, session)
             report.inserted += 1
 
     logger.info("%s", report)
