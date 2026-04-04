@@ -1,9 +1,13 @@
-"""Games Workshop Retailer Locator scraper — discovers hobby/miniatures shops."""
+"""Games Workshop store finder scraper — discovers hobby/miniatures shops.
+
+The store finder API moved from games-workshop.com to warhammer.com in early 2026.
+The new endpoint returns ALL stores worldwide in a single JSON array (no pagination,
+no lat/lng query params).  We filter to US stores client-side.
+"""
 
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import Any
 
@@ -18,25 +22,22 @@ from lgs_directory.discovery.base_scraper import (
 
 logger = logging.getLogger(__name__)
 
-# Games Workshop retailer locator API endpoint
-_API_URL = "https://www.games-workshop.com/en-US/store/storefinder"
+# Warhammer store finder API — returns all stores worldwide in a single response
+_API_URL = "https://www.warhammer.com/api/storefinder"
 
-# Search grid over contiguous US (coarse 2-degree grid)
-_US_LAT_MIN = 25
-_US_LAT_MAX = 49
-_US_LNG_MIN = -125
-_US_LNG_MAX = -66
-_GRID_STEP = 2
+_REQUEST_DELAY_SECS = 0.0  # Single request, no rate-limiting needed
 
-_SEARCH_RADIUS_MILES = 100
-_MAX_PAGES = 400  # Safety cap on total API calls — covers full US grid (~360 cells)
-_REQUEST_DELAY_SECS = 1.0
-_MAX_STORES_PER_REQUEST = 100
-
+# Browser-like headers required to avoid AWS WAF captcha challenge
 _HEADERS = {
     "Accept": "application/json",
-    "User-Agent": "lgs-directory/0.1.0",
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.warhammer.com/en-US/store-finder",
 }
+
+_MAX_RESPONSE_STORES = 20_000  # Safety cap on total stores in a single response
 
 
 class GamesWorkshopStoreRaw(BaseModel):
@@ -57,157 +58,121 @@ class GamesWorkshopStoreRaw(BaseModel):
 
 
 def _parse_gw_store(data: dict[str, Any]) -> GamesWorkshopStoreRaw | None:
-    """Parse a single GW retailer result into GamesWorkshopStoreRaw.
+    """Parse a single store from the warhammer.com store finder API.
+
+    The new API uses flat fields (addressLine1, region, postalCode, countryCode)
+    and nests coordinates under ``_geoloc``.  ``objectID`` is the stable unique key.
 
     Returns None if required fields are missing.
     """
     assert isinstance(data, dict), "data must be a dict"
 
-    store_id = data.get("id", "")
-    name = data.get("name", "")
-    if not store_id or not name:
-        logger.warning("GW store missing id or name, skipping: %s", store_id)
+    object_id = data.get("objectID", "")
+    name = data.get("displayName") or data.get("name", "")
+    if not object_id or not name:
+        logger.warning("GW store missing objectID or name, skipping: %s", object_id)
         return None
 
-    address = data.get("address", {})
-    if not isinstance(address, dict):
-        # Gracefully skip non-dict address data (e.g., flat string)
-        logger.debug("GW store %s has non-dict address, skipping", store_id)
-        return None
-
-    assert isinstance(address, dict)
-
-    street = address.get("line1", "")
-    city = address.get("town", "")
-    state = address.get("region", "")
-    zip_code = address.get("postalCode", "")
-    country = address.get("country", "")
-
+    street = data.get("addressLine1", "")
+    city = data.get("city", "")
     if not street or not city:
-        logger.warning("GW store %s has incomplete address, skipping", store_id)
+        logger.warning("GW store %s has incomplete address, skipping", object_id)
         return None
+
+    geoloc = data.get("_geoloc", {})
+    assert isinstance(geoloc, dict) or geoloc is None
+
+    lat: float | None = geoloc.get("lat") if isinstance(geoloc, dict) else None
+    lng: float | None = geoloc.get("lng") if isinstance(geoloc, dict) else None
+
+    is_wh_store = data.get("isWarHammerStore", False)
+    store_type = "GW Store" if is_wh_store else "Independent Retailer"
 
     result = GamesWorkshopStoreRaw(
-        gw_id=str(store_id),
+        gw_id=str(object_id),
         name=name,
         street=street,
         city=city,
-        state=state,
-        zip_code=zip_code,
-        country=country,
+        state=data.get("region", ""),
+        zip_code=data.get("postalCode", ""),
+        country=data.get("countryCode", ""),
         phone=data.get("phone"),
-        website=data.get("website"),
-        latitude=data.get("latitude"),
-        longitude=data.get("longitude"),
-        store_type=data.get("storeType"),
+        website=data.get("websiteUrl"),
+        latitude=lat,
+        longitude=lng,
+        store_type=store_type,
     )
-    assert result.gw_id == str(store_id)
+    assert result.gw_id == str(object_id)
     return result
 
 
 class GamesWorkshopScraper(BaseScraper):
-    """Scrapes the Games Workshop retailer locator for hobby/miniatures stores."""
+    """Scrapes the Warhammer store finder for hobby/miniatures stores.
+
+    The API returns all stores worldwide in a single JSON array.
+    We filter to US stores and deduplicate by objectID.
+    """
 
     def __init__(
         self,
         delay: float = _REQUEST_DELAY_SECS,
+        timeout: float = 60.0,
     ) -> None:
-        super().__init__(delay=delay, headers=_HEADERS)
+        assert timeout > 0, "timeout must be positive"
+        super().__init__(delay=delay, headers=_HEADERS, timeout=timeout)
 
-    def _fetch_nearby(
-        self,
-        lat: float,
-        lng: float,
-        radius_miles: int = _SEARCH_RADIUS_MILES,
-    ) -> list[dict[str, Any]]:
-        """Fetch stores near a lat/lng point."""
-        assert -90 <= lat <= 90, f"Invalid latitude: {lat}"
-        assert -180 <= lng <= 180, f"Invalid longitude: {lng}"
-
-        params = {
-            "latitude": str(lat),
-            "longitude": str(lng),
-            "radius": str(radius_miles),
-            "country": "US",
-            "maxResults": str(_MAX_STORES_PER_REQUEST),
-        }
-
+    def _fetch_all_stores(self) -> list[dict[str, Any]]:
+        """Fetch the complete store list from the warhammer.com API."""
         client = self._get_client()
-        response = client.get(_API_URL, params=params)
+        response = client.get(_API_URL)
         response.raise_for_status()
 
         data = response.json()
-        assert isinstance(data, (dict, list)), "API response must be dict or list"
-
-        # Response shape varies; normalize to list of stores
-        stores = data.get("stores", data.get("results", [])) if isinstance(data, dict) else data
-
-        assert isinstance(stores, list)
-        return stores
-
-    def _generate_grid_cells(self) -> list[tuple[float, float]]:
-        """Generate lat/lng grid cells covering the contiguous US."""
-        cells: list[tuple[float, float]] = []
-        max_cells = 5000  # safety cap
-        lat = _US_LAT_MIN
-        while lat <= _US_LAT_MAX and len(cells) < max_cells:
-            lng = _US_LNG_MIN
-            while lng <= _US_LNG_MAX and len(cells) < max_cells:
-                cells.append((lat + _GRID_STEP / 2, lng + _GRID_STEP / 2))
-                lng += _GRID_STEP
-            lat += _GRID_STEP
-        assert len(cells) > 0, "Grid must produce at least one cell"
-        return cells
+        assert isinstance(data, list), "API response must be a JSON array"
+        assert len(data) <= _MAX_RESPONSE_STORES, (
+            f"Response contains {len(data)} stores, exceeds safety cap"
+        )
+        return data
 
     def fetch_stores(self, max_requests: int | None = None) -> list[GamesWorkshopStoreRaw]:
-        """Fetch all GW-listed retailers across the US via grid scan.
+        """Fetch all GW-listed US retailers from the store finder API.
+
+        The ``max_requests`` parameter is accepted for CLI compatibility but
+        has no practical effect — the new API returns everything in one call.
 
         Returns deduplicated list of GamesWorkshopStoreRaw records.
         """
-        cells = self._generate_grid_cells()
+        # max_requests kept for interface compat; cap is always 1
+        _ = max_requests
+
+        logger.info("Fetching all stores from %s", _API_URL)
+
+        try:
+            raw_items = self._fetch_all_stores()
+        except httpx.HTTPError as exc:
+            logger.error("HTTP error fetching store finder: %s", exc)
+            return []
+
+        assert isinstance(raw_items, list)
+        logger.info("API returned %d stores worldwide", len(raw_items))
+
         seen_ids: set[str] = set()
-        all_stores: list[GamesWorkshopStoreRaw] = []
-        request_count = 0
-        request_cap = max_requests or _MAX_PAGES
+        us_stores: list[GamesWorkshopStoreRaw] = []
 
-        assert request_cap > 0, "max_requests must be positive"
-
-        logger.info(
-            "Scanning %d grid cells for GW retailers (max %d requests)",
-            len(cells), request_cap,
-        )
-
-        for cell_idx, (lat, lng) in enumerate(cells):
-            if request_count >= request_cap:
-                logger.info("Reached request cap (%d), stopping", request_cap)
-                break
-
-            try:
-                raw_stores = self._fetch_nearby(lat, lng)
-                request_count += 1
-            except httpx.HTTPError as exc:
-                request_count += 1
-                logger.warning("HTTP error for cell (%s, %s): %s", lat, lng, exc)
+        for item in raw_items:
+            # Filter to US stores only
+            country_code = item.get("countryCode", "")
+            if country_code != "US":
                 continue
 
-            for item in raw_stores:
-                parsed = _parse_gw_store(item)
-                if parsed is not None and parsed.gw_id not in seen_ids:
-                    seen_ids.add(parsed.gw_id)
-                    all_stores.append(parsed)
+            parsed = _parse_gw_store(item)
+            if parsed is not None and parsed.gw_id not in seen_ids:
+                seen_ids.add(parsed.gw_id)
+                us_stores.append(parsed)
 
-            if (cell_idx + 1) % 25 == 0:
-                logger.info(
-                    "Scanned %d / %d cells, found %d unique stores (%d requests)",
-                    cell_idx + 1, len(cells), len(all_stores), request_count,
-                )
-
-            if self._delay > 0:
-                time.sleep(self._delay)
-
-        logger.info("Total GW retailers found: %d (%d requests)", len(all_stores), request_count)
-        assert isinstance(all_stores, list)
-        return all_stores
+        assert isinstance(us_stores, list)
+        logger.info("Total US GW retailers found: %d", len(us_stores))
+        return us_stores
 
 
 def save_raw_to_cache(stores: list[GamesWorkshopStoreRaw], path: Path) -> None:
