@@ -20,6 +20,10 @@ _COMIC_SOURCE_CONFIG: dict[str, tuple[DiscoverySource, str]] = {
         DiscoverySource.LEAGUE_COMIC_GEEKS,
         "league_comic_geeks",
     ),
+    "google_places": (
+        DiscoverySource.GOOGLE_PLACES,
+        "comicbookstores",
+    ),
 }
 
 

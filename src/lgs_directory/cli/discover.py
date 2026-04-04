@@ -515,8 +515,15 @@ def comics(
         console.print(f"Loading from cache: {resolved_cache}")
         stores = load_raw_from_cache(resolved_cache)
     else:
-        console.print("Fetching stores from comic book store directories...")
-        scraper = ComicStoreScraper()
+        from lgs_directory.config import get_settings as _get_comic_settings
+
+        settings = _get_comic_settings()
+        if not settings.google_places_api_key:
+            console.print("[red]GOOGLE_PLACES_API_KEY not set in environment[/red]")
+            raise SystemExit(1)
+
+        console.print("Fetching comic stores via Google Places Text Search...")
+        scraper = ComicStoreScraper(api_key=settings.google_places_api_key)
         try:
             stores = scraper.fetch_stores(max_requests=max_requests)
         finally:
@@ -624,8 +631,15 @@ def retro_games(
         console.print(f"Loading from cache: {resolved_cache}")
         stores = load_raw_from_cache(resolved_cache)
     else:
-        console.print("Fetching stores from retro game store directories...")
-        scraper = RetroGameScraper()
+        from lgs_directory.config import get_settings as _get_retro_settings
+
+        settings = _get_retro_settings()
+        if not settings.google_places_api_key:
+            console.print("[red]GOOGLE_PLACES_API_KEY not set in environment[/red]")
+            raise SystemExit(1)
+
+        console.print("Fetching retro game stores via Google Places Text Search...")
+        scraper = RetroGameScraper(api_key=settings.google_places_api_key)
         try:
             stores = scraper.fetch_stores(max_requests=max_requests)
         finally:

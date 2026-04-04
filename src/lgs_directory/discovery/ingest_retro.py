@@ -34,7 +34,7 @@ def ingest_retro_stores(
     return ingest_stores(
         raw_stores=raw_stores,
         session=session,
-        discovery_source=DiscoverySource.VIDEO_GAME_SAGE,
+        discovery_source=DiscoverySource.GOOGLE_PLACES,
         provider_key="video_game_sage",
         label="retro store",
         get_external_id="source_id",

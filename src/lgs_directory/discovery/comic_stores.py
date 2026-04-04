@@ -1,96 +1,62 @@
-"""Comic store discovery scraper — League of Comic Geeks / comicbookstores.co."""
+"""Comic store discovery via Google Places Text Search.
+
+The original plan assumed comicbookstores.co and League of Comic Geeks had
+public JSON APIs.  Neither site exposes one, so this module delegates to
+the Google Places (New) Text Search API with comic-specific search terms.
+Results are converted into ComicStoreRaw records for the existing ingest
+pipeline.
+"""
 
 from __future__ import annotations
 
 import logging
-import time
+import re
 from pathlib import Path
 from typing import Any
 
-import httpx
 from pydantic import BaseModel
 
 from lgs_directory.discovery.base_scraper import (
-    BaseScraper,
     load_from_cache,
     save_to_cache,
 )
+from lgs_directory.discovery.google_places import GooglePlaceRaw, GooglePlacesScraper
 
 logger = logging.getLogger(__name__)
 
-# comicbookstores.co directory endpoint (JSON API)
-_API_URL = "https://comicbookstores.co/api/stores"
+# Comic-specific search queries for Google Places Text Search
+_COMIC_SEARCH_QUERIES = [
+    "comic book store",
+    "comic shop",
+    "comics and collectibles store",
+]
 
-# US state codes for iterating the directory
+# Safety caps
+_MAX_TOTAL_REQUESTS = 200
+_REQUEST_DELAY_SECS = 0.3
+
+# US state abbreviations used as region hints in queries
 _US_STATES = [
-    "AL",
-    "AK",
-    "AZ",
-    "AR",
-    "CA",
-    "CO",
-    "CT",
-    "DE",
-    "FL",
-    "GA",
-    "HI",
-    "ID",
-    "IL",
-    "IN",
-    "IA",
-    "KS",
-    "KY",
-    "LA",
-    "ME",
-    "MD",
-    "MA",
-    "MI",
-    "MN",
-    "MS",
-    "MO",
-    "MT",
-    "NE",
-    "NV",
-    "NH",
-    "NJ",
-    "NM",
-    "NY",
-    "NC",
-    "ND",
-    "OH",
-    "OK",
-    "OR",
-    "PA",
-    "RI",
-    "SC",
-    "SD",
-    "TN",
-    "TX",
-    "UT",
-    "VT",
-    "VA",
-    "WA",
-    "WV",
-    "WI",
-    "WY",
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
     "DC",
 ]
 
-_MAX_STORES_PER_STATE = 500  # Safety cap per state
-_REQUEST_DELAY_SECS = 1.0
-_MAX_TOTAL_REQUESTS = 200  # Safety cap on total API calls
+# Regex to extract state code from a US formatted address
+_STATE_RE = re.compile(r",\s*([A-Z]{2})\s+\d{5}")
 
-_HEADERS = {
-    "Accept": "application/json",
-    "User-Agent": "lgs-directory/0.1.0",
-}
+# Regex to extract zip code from a US formatted address
+_ZIP_RE = re.compile(r"\b(\d{5})(?:-\d{4})?\b")
 
 
 class ComicStoreRaw(BaseModel):
     """Raw store record from a comic store directory."""
 
     source_id: str
-    source: str  # "league_comic_geeks" or "comicbookstores"
+    source: str  # "google_places"
     name: str
     street: str
     city: str
@@ -103,172 +69,142 @@ class ComicStoreRaw(BaseModel):
     longitude: float | None = None
 
 
-def _parse_cbs_store(data: dict[str, Any]) -> ComicStoreRaw | None:
-    """Parse a comicbookstores.co store entry.
+def _parse_address_parts(address: str) -> dict[str, str]:
+    """Extract street, city, state, zip from a Google Places formatted address.
 
-    Returns None if required fields are missing.
+    Returns a dict with keys street, city, state, zip_code.  Values may be
+    empty strings when a component cannot be parsed.
     """
-    assert isinstance(data, dict), "data must be a dict"
+    assert isinstance(address, str), "address must be a str"
 
-    store_id = data.get("id", data.get("slug", ""))
-    name = data.get("name", "")
-    if not store_id or not name:
-        logger.warning("CBS store missing id or name, skipping")
-        return None
+    parts = [p.strip() for p in address.split(",")]
 
-    street = data.get("street", data.get("address", ""))
-    city = data.get("city", "")
-    state = data.get("state", "")
-    zip_code = data.get("zip", data.get("zip_code", ""))
+    street = parts[0] if len(parts) >= 1 else ""
+    city = parts[1] if len(parts) >= 2 else ""
 
-    if not street or not city:
-        logger.warning("CBS store %s has incomplete address, skipping", store_id)
-        return None
+    state = ""
+    state_match = _STATE_RE.search(address)
+    if state_match is not None:
+        state = state_match.group(1)
 
-    result = ComicStoreRaw(
-        source_id=str(store_id),
-        source="comicbookstores",
-        name=name,
-        street=street,
-        city=city,
-        state=state,
-        zip_code=zip_code,
-        phone=data.get("phone"),
-        website=data.get("website", data.get("url")),
-        latitude=data.get("lat", data.get("latitude")),
-        longitude=data.get("lng", data.get("longitude")),
-    )
-    assert result.source_id == str(store_id)
+    zip_code = ""
+    zip_match = _ZIP_RE.search(address)
+    if zip_match is not None:
+        zip_code = zip_match.group(1)
+
+    result = {
+        "street": street,
+        "city": city,
+        "state": state,
+        "zip_code": zip_code,
+    }
+    assert isinstance(result, dict)
     return result
 
 
-def _parse_lcg_store(data: dict[str, Any]) -> ComicStoreRaw | None:
-    """Parse a League of Comic Geeks store entry.
+def _convert_google_place(place: GooglePlaceRaw) -> ComicStoreRaw | None:
+    """Convert a GooglePlaceRaw into a ComicStoreRaw.
 
-    Returns None if required fields are missing.
+    Returns None if the address cannot be parsed into required components.
     """
-    assert isinstance(data, dict), "data must be a dict"
+    assert isinstance(place, GooglePlaceRaw), "place must be a GooglePlaceRaw"
 
-    store_id = str(data.get("id", ""))
-    name = data.get("name", "")
-    if not store_id or not name:
-        logger.warning("LCG store missing id or name, skipping")
-        return None
-
-    address = data.get("address")
-    if not isinstance(address, dict):
-        logger.warning("LCG store %s has non-dict address, skipping", store_id)
-        return None
-
-    street = address.get("street", "")
-    city = address.get("city", "")
-    state = address.get("state", "")
-    zip_code = address.get("zip", "")
-
-    if not street or not city:
-        logger.warning("LCG store %s has incomplete address, skipping", store_id)
+    addr = _parse_address_parts(place.address)
+    if not addr["street"] or not addr["city"]:
+        logger.warning(
+            "Could not parse address for place %s (%s), skipping",
+            place.place_id,
+            place.address,
+        )
         return None
 
     result = ComicStoreRaw(
-        source_id=store_id,
-        source="league_comic_geeks",
-        name=name,
-        street=street,
-        city=city,
-        state=state,
-        zip_code=zip_code,
-        phone=data.get("phone"),
-        website=data.get("website"),
-        latitude=data.get("latitude"),
-        longitude=data.get("longitude"),
+        source_id=place.place_id,
+        source="google_places",
+        name=place.name,
+        street=addr["street"],
+        city=addr["city"],
+        state=addr["state"],
+        zip_code=addr["zip_code"],
+        phone=place.phone,
+        website=place.website,
+        latitude=place.lat,
+        longitude=place.lng,
     )
-    assert result.source_id == store_id
+    assert result.source_id == place.place_id
     return result
 
 
-class ComicStoreScraper(BaseScraper):
-    """Scrapes comic store directories for shop listings."""
+class ComicStoreScraper:
+    """Discovers comic stores via Google Places Text Search.
+
+    Uses comic-specific search queries across US states and converts
+    the results into ComicStoreRaw records.
+    """
 
     def __init__(
         self,
+        api_key: str,
         delay: float = _REQUEST_DELAY_SECS,
     ) -> None:
-        super().__init__(delay=delay, headers=_HEADERS)
-
-    def _fetch_state_stores(self, state: str) -> list[dict[str, Any]]:
-        """Fetch comic stores for a single US state."""
-        assert isinstance(state, str) and len(state) == 2, f"Invalid state: {state}"
-
-        client = self._get_client()
-        params = {
-            "state": state,
-            "country": "US",
-            "limit": str(_MAX_STORES_PER_STATE),
-        }
-
-        response = client.get(_API_URL, params=params)
-        response.raise_for_status()
-
-        data = response.json()
-        assert isinstance(data, (dict, list)), "API response must be dict or list"
-
-        stores = data.get("stores", data.get("results", [])) if isinstance(data, dict) else data
-
-        assert isinstance(stores, list)
-        return stores
+        assert isinstance(api_key, str) and len(api_key) > 0, "API key required"
+        assert delay >= 0, "Delay must be non-negative"
+        self._api_key = api_key
+        self._delay = delay
+        self._scraper = GooglePlacesScraper(api_key=api_key, delay=delay)
 
     def fetch_stores(self, max_requests: int | None = None) -> list[ComicStoreRaw]:
-        """Fetch comic stores across all US states.
+        """Fetch comic stores across the US via Google Places Text Search.
 
         Returns deduplicated list of ComicStoreRaw records.
         """
-        seen_ids: set[str] = set()
-        all_stores: list[ComicStoreRaw] = []
-        request_count = 0
         request_cap = max_requests or _MAX_TOTAL_REQUESTS
-
         assert request_cap > 0, "max_requests must be positive"
 
         logger.info(
-            "Scanning %d US states for comic stores (max %d requests)",
-            len(_US_STATES),
+            "Searching Google Places for comic stores with %d queries (max %d requests)",
+            len(_COMIC_SEARCH_QUERIES),
             request_cap,
         )
 
-        for state_idx, state in enumerate(_US_STATES):
-            if request_count >= request_cap:
-                logger.info("Reached request cap (%d), stopping", request_cap)
-                break
+        # Use the Google Places scraper with comic-specific queries
+        # We limit grid cells to control request count
+        # Each cell x query = 1+ request, so estimate cells from cap
+        max_queries = len(_COMIC_SEARCH_QUERIES)
+        limit_cells = max(1, request_cap // max(max_queries, 1))
 
-            try:
-                raw_stores = self._fetch_state_stores(state)
-                request_count += 1
-            except httpx.HTTPError as exc:
-                request_count += 1
-                logger.warning("HTTP error for state %s: %s", state, exc)
-                continue
+        raw_places = self._scraper.fetch_stores(
+            limit_cells=limit_cells,
+            max_requests=request_cap,
+        )
 
-            for item in raw_stores:
-                parsed = _parse_cbs_store(item)
-                if parsed is not None and parsed.source_id not in seen_ids:
-                    seen_ids.add(parsed.source_id)
-                    all_stores.append(parsed)
+        # Convert Google Places results to ComicStoreRaw
+        seen_ids: set[str] = set()
+        comic_stores: list[ComicStoreRaw] = []
 
-            if (state_idx + 1) % 10 == 0:
-                logger.info(
-                    "Scanned %d / %d states, found %d unique stores (%d requests)",
-                    state_idx + 1,
-                    len(_US_STATES),
-                    len(all_stores),
-                    request_count,
-                )
+        for place in raw_places:
+            converted = _convert_google_place(place)
+            if converted is not None and converted.source_id not in seen_ids:
+                seen_ids.add(converted.source_id)
+                comic_stores.append(converted)
 
-            if self._delay > 0:
-                time.sleep(self._delay)
+        logger.info(
+            "Converted %d Google Places results to %d comic store records",
+            len(raw_places),
+            len(comic_stores),
+        )
+        assert isinstance(comic_stores, list)
+        return comic_stores
 
-        logger.info("Total comic stores found: %d (%d requests)", len(all_stores), request_count)
-        assert isinstance(all_stores, list)
-        return all_stores
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._scraper.close()
+
+    def __enter__(self) -> ComicStoreScraper:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
 
 
 def save_raw_to_cache(stores: list[ComicStoreRaw], path: Path) -> None:
