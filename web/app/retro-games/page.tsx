@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getCategoryRouteBySlug } from "@/lib/category-routes";
 import { SITE_URL } from "@/lib/site";
+import { Gamepad2 } from "lucide-react";
 
 export const revalidate = 86400;
 
@@ -72,23 +73,29 @@ export default async function RetroGamesPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
       <Breadcrumb items={breadcrumbItems} />
 
-      <div className="mb-6 mt-4">
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">
-          {CATEGORY.label}
-        </h1>
-        <p className="text-sm text-zinc-400 max-w-2xl">
+      <div className="mb-8 mt-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/10 text-green-400">
+            <Gamepad2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight">
+              {CATEGORY.label}
+            </h1>
+            <p className="text-sm text-zinc-500">
+              {result.total.toLocaleString()} stores
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-zinc-400 max-w-2xl mt-2 leading-relaxed">
           {CATEGORY.heroText}
         </p>
       </div>
 
-      <p className="text-zinc-500 text-sm mb-4">
-        {result.total} stores found
-      </p>
-
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30">
         <StoreTable stores={result.stores} />
       </div>
 

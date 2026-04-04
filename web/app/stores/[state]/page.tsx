@@ -11,6 +11,7 @@ import { Pagination } from "@/components/pagination";
 import { CityGrid } from "@/components/city-grid";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
+import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
 
 export const revalidate = 86400;
@@ -98,7 +99,7 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
       ? initialResult
       : await listStores({ state: abbrev ?? undefined, page: safePage });
 
-  // Build StoreWithDistance[] for the map — add distance_miles: 0
+  // Build StoreWithDistance[] for the map -- add distance_miles: 0
   const storesWithCoords: StoreWithDistance[] = [];
   const storeLimit = Math.min(result.stores.length, 500);
   for (let i = 0; i < storeLimit; i++) {
@@ -166,13 +167,18 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
       <Breadcrumb items={breadcrumbItems} />
 
-      <div className="mb-6 mt-4">
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">
-          Game Stores in {stateName}
-        </h1>
+      <div className="mb-6 mt-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-600/10 text-yellow-500">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">
+            Game Stores in {stateName}
+          </h1>
+        </div>
       </div>
 
       <StatsBar
@@ -184,7 +190,7 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
 
       {storesWithCoords.length > 0 && (
         <div className="mb-8">
-          <div className="rounded-lg border border-zinc-800 overflow-hidden h-96 bg-zinc-900">
+          <div className="rounded-xl border border-zinc-800 overflow-hidden h-96 bg-zinc-900">
             <Suspense
               fallback={
                 <div className="h-full w-full flex items-center justify-center">
@@ -204,7 +210,7 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
 
       {cities.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-medium mb-3">
+          <h2 className="font-display text-lg font-semibold mb-4">
             Cities in {stateName}
           </h2>
           <CityGrid stateSlug={stateSlug} cities={cities} />
@@ -212,10 +218,10 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
       )}
 
       <div className="mb-8">
-        <h2 className="text-lg font-medium mb-3">
+        <h2 className="font-display text-lg font-semibold mb-4">
           All Stores in {abbrev}
         </h2>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/30">
           <StoreTable stores={result.stores} />
         </div>
 

@@ -51,7 +51,7 @@ const presenceConfig: Record<PresenceStatus, { color: string; description: strin
     description: "URL is reachable and operational",
   },
   unreachable: {
-    color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    color: "bg-yellow-600/15 text-yellow-500 border-yellow-600/30",
     description: "URL returns errors or times out",
   },
   dead: {

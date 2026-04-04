@@ -170,11 +170,11 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
       <Breadcrumb items={breadcrumbItems} />
 
-      <div className="mb-6 mt-4">
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+      <div className="mb-6 mt-6">
+        <h1 className="font-display text-2xl font-bold tracking-tight mb-1">
           Game Stores in {cityName}, {abbrev}
         </h1>
       </div>
@@ -193,10 +193,10 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
       )}
 
       <div className="mb-8">
-        <h2 className="text-lg font-medium mb-3">
+        <h2 className="font-display text-lg font-semibold mb-4">
           All Stores in {cityName}
         </h2>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/30">
           <StoreTable stores={result.stores} enrichments={enrichments} />
         </div>
 
@@ -212,7 +212,7 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div>
           {storesWithCoords.length > 0 && (
-            <div className="rounded-lg border border-zinc-800 overflow-hidden h-96 bg-zinc-900">
+            <div className="rounded-xl border border-zinc-800 overflow-hidden h-96 bg-zinc-900">
               <Suspense
                 fallback={
                   <div className="h-full w-full flex items-center justify-center">

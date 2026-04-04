@@ -1,4 +1,5 @@
 import type { FaqItem } from "@/lib/faq";
+import { HelpCircle } from "lucide-react";
 
 interface StoreFaqProps {
   items: FaqItem[];
@@ -19,25 +20,28 @@ export function StoreFaq({ items, storeName }: StoreFaqProps) {
 
   return (
     <section aria-label={`Frequently asked questions about ${storeName}`}>
-      <h2 className="text-lg font-medium mb-3">
-        Frequently Asked Questions
-      </h2>
+      <div className="flex items-center gap-2 mb-4">
+        <HelpCircle className="w-5 h-5 text-yellow-500" />
+        <h2 className="font-display text-lg font-semibold">
+          Frequently Asked Questions
+        </h2>
+      </div>
       <div className="space-y-2">
         {displayItems.map((item) => (
           <details
             key={item.question}
-            className="group rounded-lg border border-zinc-800 bg-zinc-950"
+            className="group rounded-xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:bg-zinc-900/80"
           >
-            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-zinc-200 hover:text-zinc-100 transition-colors [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-medium text-zinc-200 hover:text-zinc-100 transition-colors [&::-webkit-details-marker]:hidden">
               <span>{item.question}</span>
               <span
-                className="ml-2 text-zinc-500 transition-transform group-open:rotate-45"
+                className="ml-2 text-zinc-500 transition-transform duration-200 group-open:rotate-45"
                 aria-hidden="true"
               >
                 +
               </span>
             </summary>
-            <div className="px-4 pb-3 text-sm text-zinc-400 leading-relaxed">
+            <div className="px-5 pb-4 text-sm text-zinc-400 leading-relaxed">
               {item.answer}
             </div>
           </details>

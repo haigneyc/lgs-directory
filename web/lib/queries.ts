@@ -768,3 +768,63 @@ export async function getCategoryStats(): Promise<
   console.assert(Array.isArray(rows), "getCategoryStats: rows must be an array");
   return rows;
 }
+
+export async function getTotalStoreCount(): Promise<number> {
+  const rows = await query<{ total: number }>(
+    `SELECT count(*)::int as total FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')`
+  );
+
+  console.assert(Array.isArray(rows), "getTotalStoreCount: rows must be an array");
+  console.assert(rows.length === 1, "getTotalStoreCount: expected exactly one row");
+  return rows[0]?.total ?? 0;
+}
+
+export async function getPopularCities(
+  limit: number = 12
+): Promise<{ city: string; state: string; store_count: number }[]> {
+  console.assert(typeof limit === "number" && limit > 0, "getPopularCities: limit must be positive");
+  console.assert(limit <= 100, "getPopularCities: limit must be <= 100");
+
+  const rows = await query<{ city: string; state: string; store_count: number }>(
+    `SELECT
+       address->>'city' AS city,
+       address->>'state' AS state,
+       COUNT(*)::int AS store_count
+     FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')
+       AND address->>'city' IS NOT NULL
+       AND address->>'state' IS NOT NULL
+     GROUP BY address->>'city', address->>'state'
+     ORDER BY store_count DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  console.assert(Array.isArray(rows), "getPopularCities: rows must be an array");
+  return rows;
+}
+
+/** Product/game tag counts across all stores with website content data */
+export async function getGameTagCounts(): Promise<
+  { tag: string; count: number }[]
+> {
+  try {
+    const rows = await query<{ tag: string; count: number }>(
+      `SELECT
+         elem AS tag,
+         COUNT(DISTINCT store_id)::int AS count
+       FROM store_external_refs,
+         LATERAL jsonb_array_elements_text(payload->'products') AS elem
+       WHERE provider = 'website_content'
+       GROUP BY elem
+       ORDER BY count DESC`
+    );
+
+    console.assert(Array.isArray(rows), "getGameTagCounts: rows must be an array");
+    return rows;
+  } catch (err) {
+    console.error("getGameTagCounts: query failed", err);
+    return [];
+  }
+}

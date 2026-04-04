@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useCallback } from "react";
-import { SearchIcon } from "lucide-react";
+import { Search, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,9 @@ interface FilterBarProps {
 export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  console.assert(Array.isArray(states), "FilterBar: states must be an array");
+  console.assert(Array.isArray(categories), "FilterBar: categories must be an array");
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -54,27 +57,30 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
   const hasFilters = currentState || currentStatus || currentWpn || currentCategory || currentSearch;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1">
-        <Input
-          placeholder="Search stores… (Enter)"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="w-48 bg-zinc-900 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              submitSearch();
-            }
-          }}
-        />
+    <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex items-center gap-1.5">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <Input
+            placeholder="Search stores..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-52 pl-9 bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500 rounded-lg focus:border-yellow-600/40 focus:ring-yellow-600/20"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                submitSearch();
+              }
+            }}
+          />
+        </div>
         <Button
           variant="outline"
           size="icon"
-          className="bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg"
           onClick={submitSearch}
           aria-label="Search"
         >
-          <SearchIcon className="size-4" />
+          <Search className="size-4" />
         </Button>
       </div>
 
@@ -82,7 +88,7 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
         value={currentState || "all"}
         onValueChange={(v) => setParam("state", v)}
       >
-        <SelectTrigger className="w-32 bg-zinc-900 border-zinc-800 text-zinc-300">
+        <SelectTrigger className="w-32 bg-zinc-900/80 border-zinc-800 text-zinc-300 rounded-lg">
           <SelectValue placeholder="State" />
         </SelectTrigger>
         <SelectContent className="bg-zinc-900 border-zinc-800">
@@ -101,7 +107,7 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
         value={currentStatus || "all"}
         onValueChange={(v) => setParam("status", v)}
       >
-        <SelectTrigger className="w-36 bg-zinc-900 border-zinc-800 text-zinc-300">
+        <SelectTrigger className="w-36 bg-zinc-900/80 border-zinc-800 text-zinc-300 rounded-lg">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent className="bg-zinc-900 border-zinc-800">
@@ -120,7 +126,7 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
         value={currentWpn || "all"}
         onValueChange={(v) => setParam("wpn", v)}
       >
-        <SelectTrigger className="w-36 bg-zinc-900 border-zinc-800 text-zinc-300">
+        <SelectTrigger className="w-36 bg-zinc-900/80 border-zinc-800 text-zinc-300 rounded-lg">
           <SelectValue placeholder="WPN Level" />
         </SelectTrigger>
         <SelectContent className="bg-zinc-900 border-zinc-800">
@@ -139,7 +145,7 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
         value={currentCategory || "all"}
         onValueChange={(v) => setParam("category", v)}
       >
-        <SelectTrigger className="w-40 bg-zinc-900 border-zinc-800 text-zinc-300">
+        <SelectTrigger className="w-40 bg-zinc-900/80 border-zinc-800 text-zinc-300 rounded-lg">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent className="bg-zinc-900 border-zinc-800">
@@ -158,10 +164,11 @@ export function FilterBar({ states, statuses, wpnLevels, categories }: FilterBar
         <Button
           variant="ghost"
           size="sm"
-          className="text-zinc-500 hover:text-zinc-300"
+          className="text-zinc-500 hover:text-zinc-300 gap-1"
           onClick={() => router.push("/")}
         >
-          Clear filters
+          <X className="w-3.5 h-3.5" />
+          Clear
         </Button>
       )}
     </div>
