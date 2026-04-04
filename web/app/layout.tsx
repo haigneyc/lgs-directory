@@ -47,6 +47,7 @@ const NAV_LINKS = [
 ] as const;
 
 const NAV_LINKS_LENGTH = 5;
+const EBAY_STOREFRONT_URL = "https://www.ebay.com/inf/rollforstore";
 
 /* Google Analytics ID -- hardcoded, no user input */
 const GA_ID = "G-WD7RC5SPMY";
@@ -106,9 +107,9 @@ export default function RootLayout({
                 );
               })}
               <a
-                href="https://hollowhag.tcgplayerpro.com/"
+                href={EBAY_STOREFRONT_URL}
                 target="_blank"
-                rel="noopener"
+                rel="noopener noreferrer"
                 className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-yellow-500 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all duration-200"
               >
                 Shop Cards
@@ -145,8 +146,8 @@ export default function RootLayout({
                 <h3 className="font-display font-semibold text-sm text-zinc-300 mb-3">Resources</h3>
                 <ul className="space-y-2">
                   <li>
-                    <a href="https://hollowhag.tcgplayerpro.com/" target="_blank" rel="noopener" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-                      Shop Cards Online
+                    <a href={EBAY_STOREFRONT_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+                      Shop Cards on eBay
                     </a>
                   </li>
                 </ul>
@@ -194,9 +195,9 @@ function MobileNav() {
         })}
         <div className="border-t border-zinc-800 mt-1 pt-1">
           <a
-            href="https://hollowhag.tcgplayerpro.com/"
+            href={EBAY_STOREFRONT_URL}
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-400 hover:bg-yellow-600/10 transition-colors"
           >
             Shop Cards

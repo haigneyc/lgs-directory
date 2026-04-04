@@ -93,6 +93,14 @@ export default async function RetroGamesPage({ searchParams }: PageProps) {
         <p className="text-sm text-zinc-400 max-w-2xl mt-2 leading-relaxed">
           {CATEGORY.heroText}
         </p>
+        <a
+          href="https://www.ebay.com/inf/rollforstore"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg border border-yellow-600/30 bg-yellow-600/5 text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200"
+        >
+          Shop Retro Games &amp; Consoles on eBay →
+        </a>
       </div>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/30">

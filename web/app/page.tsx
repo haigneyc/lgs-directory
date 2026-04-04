@@ -212,6 +212,31 @@ export default async function HomePage({ searchParams }: PageProps) {
             </div>
           </section>
 
+          {/* eBay Storefront Banner */}
+          <section className="mx-auto max-w-7xl px-4 lg:px-6 pb-4">
+            <a
+              href="https://www.ebay.com/inf/rollforstore"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-4 rounded-xl border border-yellow-600/30 bg-yellow-600/5 px-5 py-4 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-yellow-500 text-xl">🃏</span>
+                <div>
+                  <p className="text-sm font-semibold text-yellow-400 group-hover:text-yellow-300 transition-colors">
+                    Shop Trading Cards on eBay
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Browse MTG, Pokemon, Yu-Gi-Oh &amp; more at the Roll For Store eBay storefront
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-yellow-600 group-hover:text-yellow-500 transition-colors whitespace-nowrap">
+                Shop Now →
+              </span>
+            </a>
+          </section>
+
           {/* Store Type Cards */}
           <section className="mx-auto max-w-7xl px-4 lg:px-6 pb-12">
             <div className="flex items-center gap-3 mb-6">
