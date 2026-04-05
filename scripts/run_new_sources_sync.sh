@@ -39,4 +39,12 @@ lgs validate run --status candidate --limit 500 || echo "Validation failed, cont
 echo "--- Content Scraping ---"
 lgs scrape content --limit 200 || echo "Content scraping failed, continuing..."
 
+# 7. Match newly discovered stores to Google Place IDs
+echo "--- Google Place ID Matching ---"
+lgs enrich match-google --limit 500 || echo "Google match-google failed, continuing..."
+
+# 8. Google Places enrichment for newly matched stores
+echo "--- Google Places Enrichment ---"
+lgs enrich google --limit 200 || echo "Google enrichment failed, continuing..."
+
 echo "=== New Sources Discovery Sync Complete — $(date) ==="

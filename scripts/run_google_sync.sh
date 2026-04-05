@@ -35,6 +35,10 @@ NEXT_SHARD=$(( (SHARD_INDEX + 1) % SHARD_COUNT ))
 echo "$NEXT_SHARD" > "$STATE_FILE"
 echo "Next shard: ${NEXT_SHARD}"
 
+# Match unmatched stores to Google Place IDs before enriching
+echo "--- Google Place ID Matching ---"
+lgs enrich match-google --limit 200 || echo "Google match-google failed, continuing..."
+
 # Enrich newly discovered stores with Google Places data
 echo "--- Enriching new discoveries ---"
 lgs enrich google --limit 100 || echo "Enrichment failed, continuing..."

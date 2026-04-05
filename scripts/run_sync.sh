@@ -40,7 +40,11 @@ lgs freshness run --limit "${LGS_FRESHNESS_LIMIT:-250}" || echo "Freshness check
 echo "--- Content Scraping ---"
 lgs scrape content --limit 200 || echo "Content scraping failed, continuing..."
 
-# 8. Google Places enrichment (~$0.05/run for stale refreshes)
+# 8. Match unmatched stores to Google Place IDs
+echo "--- Google Place ID Matching ---"
+lgs enrich match-google --limit 200 || echo "Google match-google failed, continuing..."
+
+# 9. Google Places enrichment (~$0.05/run for stale refreshes)
 echo "--- Google Places Enrichment ---"
 lgs enrich google --limit 50 || echo "Google enrichment failed, continuing..."
 
