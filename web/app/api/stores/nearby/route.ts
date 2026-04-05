@@ -27,5 +27,9 @@ export async function GET(request: NextRequest) {
 
   const stores = await getNearbyStores(lat, lng, clampedRadius, clampedLimit);
 
-  return Response.json(stores);
+  return Response.json(stores, {
+    headers: {
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
 }

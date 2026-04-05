@@ -27,6 +27,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+/** Revalidate homepage every hour -- aggregate stats change slowly */
+export const revalidate = 3600;
+
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
