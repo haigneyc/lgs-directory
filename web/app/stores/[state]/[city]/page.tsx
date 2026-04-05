@@ -157,10 +157,14 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
 
   const jsonLdData: Record<string, unknown> = {
     "@context": "https://schema.org",
-    "@type": "ItemList",
+    "@type": "CollectionPage",
     name: `Game Stores in ${cityName}, ${abbrev}`,
-    numberOfItems: result.total,
-    itemListElement: itemListElements,
+    url: `${SITE_URL}/stores/${stateSlug}/${citySlug}`,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: result.total,
+      itemListElement: itemListElements,
+    },
   };
 
   const breadcrumbItems = [

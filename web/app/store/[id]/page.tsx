@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
-import { getStore, getStoreEnrichment, getStoreContent, getStoreCategories } from "@/lib/queries";
+import { getStore, getStoreEnrichment, getStoreContent, getStoreCategories, getOtherStoresInCity } from "@/lib/queries";
 import { stateToSlug, cityToSlug, abbreviationToStateName } from "@/lib/slugs";
 import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
 import { formatAddress, formatDate, formatProduct, formatCategory } from "@/lib/format";
+import { OtherCityStores } from "@/components/other-city-stores";
 import { StoreFaq } from "@/components/seo/store-faq";
 import { generateStoreFaq, buildFaqJsonLd } from "@/lib/faq";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,14 @@ export default async function StoreDetailPage({ params }: PageProps) {
 
   console.assert(typeof store.name === "string", "StoreDetailPage: store.name must be a string");
   console.assert(typeof store.id === "string", "StoreDetailPage: store.id must be a string");
+
+  const otherStores = await getOtherStoresInCity(
+    store.id,
+    store.address.state,
+    store.address.city
+  );
+  const citySlug = cityToSlug(store.address.city);
+  const stateSlugValue = stateToSlug(store.address.state);
 
   const faqItems = generateStoreFaq({ store, enrichment, storeContent });
   const rating = enrichment?.rating ?? 0;
@@ -302,6 +311,35 @@ export default async function StoreDetailPage({ params }: PageProps) {
           <StoreFaq items={faqItems} storeName={store.name} />
         </div>
       )}
+
+      {/* Other Stores in City */}
+      {otherStores.length > 0 && (
+        <OtherCityStores
+          stores={otherStores}
+          cityName={store.address.city}
+          stateSlug={stateSlugValue}
+          citySlug={citySlug}
+        />
+      )}
+
+      {/* Browse links */}
+      <div className="border-t border-zinc-800/60 pt-8 mb-8">
+        <h2 className="text-xs uppercase tracking-wider text-zinc-500 mb-3">Browse More</h2>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href={`/stores/${stateSlugValue}/${citySlug}`}
+            className="rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-700 transition-colors"
+          >
+            All stores in {store.address.city}
+          </a>
+          <a
+            href={`/stores/${stateSlugValue}`}
+            className="rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-700 transition-colors"
+          >
+            All stores in {abbreviationToStateName(store.address.state) ?? store.address.state}
+          </a>
+        </div>
+      </div>
 
       {/* Notes */}
       {store.notes && (

@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { listStoresByCategory } from "@/lib/queries";
+import { listStoresByCategory, getTopCitiesForCategory } from "@/lib/queries";
 import { StoreTable } from "@/components/store-table";
 import { Pagination } from "@/components/pagination";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getCategoryRouteBySlug } from "@/lib/category-routes";
+import { CategoryTopCities } from "@/components/category-top-cities";
 import { SITE_URL } from "@/lib/site";
 import { BookOpen } from "lucide-react";
 
@@ -39,10 +40,10 @@ export default async function ComicsPage({ searchParams }: PageProps) {
   const safePage = Math.max(1, rawPage);
   console.assert(safePage >= 1, "ComicsPage: page must be >= 1");
 
-  const result = await listStoresByCategory(CATEGORY.dbCategory, {
-    page: safePage,
-    state,
-  });
+  const [result, topCities] = await Promise.all([
+    listStoresByCategory(CATEGORY.dbCategory, { page: safePage, state }),
+    getTopCitiesForCategory(CATEGORY.dbCategory),
+  ]);
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
@@ -114,6 +115,10 @@ export default async function ComicsPage({ searchParams }: PageProps) {
           total={result.total}
         />
       </Suspense>
+
+      {topCities.length > 0 && (
+        <CategoryTopCities categoryLabel={CATEGORY.label} cities={topCities} />
+      )}
 
       <JsonLd data={{
         "@context": "https://schema.org",

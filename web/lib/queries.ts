@@ -805,6 +805,68 @@ export async function getPopularCities(
   return rows;
 }
 
+/**
+ * Returns other stores in the same city, excluding the given store.
+ * Used for "Other Stores in [City]" section on store detail pages.
+ */
+export async function getOtherStoresInCity(
+  storeId: string,
+  state: string,
+  city: string,
+  limit: number = 6
+): Promise<Store[]> {
+  console.assert(typeof storeId === "string" && storeId.length > 0, "getOtherStoresInCity: storeId must be non-empty");
+  console.assert(typeof state === "string" && state.length > 0, "getOtherStoresInCity: state must be non-empty");
+  console.assert(typeof city === "string" && city.length > 0, "getOtherStoresInCity: city must be non-empty");
+  console.assert(limit > 0 && limit <= 50, "getOtherStoresInCity: limit must be 1-50");
+
+  const rows = await query<Store>(
+    `SELECT * FROM stores
+     WHERE UPPER(address->>'state') = UPPER($1)
+       AND UPPER(address->>'city') = UPPER($2)
+       AND id != $3
+       AND status IN ('active', 'verified', 'candidate')
+     ORDER BY name ASC
+     LIMIT $4`,
+    [state, city, storeId, limit]
+  );
+
+  console.assert(Array.isArray(rows), "getOtherStoresInCity: rows must be an array");
+  return rows;
+}
+
+/**
+ * Returns the top cities by store count for a given category.
+ * Used for internal linking on category pages.
+ */
+export async function getTopCitiesForCategory(
+  category: string,
+  limit: number = 10
+): Promise<{ city: string; state: string; store_count: number }[]> {
+  console.assert(typeof category === "string" && category.length > 0, "getTopCitiesForCategory: category must be non-empty");
+  console.assert(limit > 0 && limit <= 50, "getTopCitiesForCategory: limit must be 1-50");
+
+  const rows = await query<{ city: string; state: string; store_count: number }>(
+    `SELECT
+       s.address->>'city' AS city,
+       s.address->>'state' AS state,
+       COUNT(*)::int AS store_count
+     FROM stores s
+     INNER JOIN store_categories sc ON sc.store_id = s.id
+     WHERE sc.category = $1
+       AND s.status IN ('active', 'verified', 'candidate')
+       AND s.address->>'city' IS NOT NULL
+       AND s.address->>'state' IS NOT NULL
+     GROUP BY s.address->>'city', s.address->>'state'
+     ORDER BY store_count DESC
+     LIMIT $2`,
+    [category, limit]
+  );
+
+  console.assert(Array.isArray(rows), "getTopCitiesForCategory: rows must be an array");
+  return rows;
+}
+
 /** Product/game tag counts across all stores with website content data */
 export async function getGameTagCounts(): Promise<
   { tag: string; count: number }[]
