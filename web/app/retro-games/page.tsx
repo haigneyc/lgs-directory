@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getCategoryRouteBySlug } from "@/lib/category-routes";
 import { CategoryTopCities } from "@/components/category-top-cities";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import { Gamepad2 } from "lucide-react";
 
 export const revalidate = 86400;
@@ -95,7 +95,7 @@ export default async function RetroGamesPage({ searchParams }: PageProps) {
           {CATEGORY.heroText}
         </p>
         <a
-          href="https://www.ebay.com/inf/rollforstore"
+          href={EBAY_URLS.collections.boardGames}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg border border-yellow-600/30 bg-yellow-600/5 text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200"

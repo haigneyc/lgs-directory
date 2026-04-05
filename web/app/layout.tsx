@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Cinzel, DM_Sans } from "next/font/google";
 import Link from "next/link";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import {
   MapPin,
   Sword,
@@ -47,7 +47,7 @@ const NAV_LINKS = [
 ] as const;
 
 const NAV_LINKS_LENGTH = 5;
-const EBAY_STOREFRONT_URL = "https://www.ebay.com/inf/rollforstore";
+const EBAY_STOREFRONT_URL = EBAY_URLS.storefront;
 
 /* Google Analytics ID -- hardcoded, no user input */
 const GA_ID = "G-WD7RC5SPMY";
