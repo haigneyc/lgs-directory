@@ -106,14 +106,17 @@ export default function RootLayout({
                   </Link>
                 );
               })}
-              <a
-                href={EBAY_STOREFRONT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-yellow-500 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all duration-200"
-              >
-                Shop Cards
-              </a>
+              <div className="ml-2 flex flex-col items-center">
+                <a
+                  href={EBAY_STOREFRONT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-yellow-500 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all duration-200"
+                >
+                  Shop Cards
+                </a>
+                <p className="text-[10px] text-zinc-600 italic -mt-1">Affiliate link</p>
+              </div>
             </div>
 
             {/* Mobile nav toggle */}
@@ -149,6 +152,12 @@ export default function RootLayout({
                     <a href={EBAY_STOREFRONT_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
                       Shop Cards on eBay
                     </a>
+                    <p className="text-xs text-zinc-600 italic mt-0.5">eBay Partner affiliate link</p>
+                  </li>
+                  <li>
+                    <Link href="/privacy-policy" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+                      Privacy Policy
+                    </Link>
                   </li>
                 </ul>
               </div>
@@ -159,8 +168,12 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
-            <div className="mt-10 pt-6 border-t border-zinc-800/60 text-center text-xs text-zinc-600">
-              Roll For Store
+            <div className="mt-10 pt-6 border-t border-zinc-800/60 text-center text-xs text-zinc-600 flex items-center justify-center gap-3">
+              <span>Roll For Store</span>
+              <span className="text-zinc-700">|</span>
+              <Link href="/privacy-policy" className="hover:text-zinc-400 transition-colors">
+                Privacy Policy
+              </Link>
             </div>
           </div>
         </footer>
@@ -199,9 +212,11 @@ function MobileNav() {
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-400 hover:bg-yellow-600/10 transition-colors"
+            title="Affiliate link - we earn a commission on purchases"
           >
             Shop Cards
           </a>
+          <p className="px-3 text-[10px] text-zinc-600 italic">Affiliate link</p>
         </div>
       </div>
     </details>

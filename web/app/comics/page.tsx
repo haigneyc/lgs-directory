@@ -8,6 +8,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { getCategoryRouteBySlug } from "@/lib/category-routes";
 import { CategoryTopCities } from "@/components/category-top-cities";
 import { SITE_URL, EBAY_URLS } from "@/lib/site";
+import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
 import { BookOpen } from "lucide-react";
 
 export const revalidate = 86400;
@@ -102,6 +103,7 @@ export default async function ComicsPage({ searchParams }: PageProps) {
         >
           Shop Comics &amp; Collectibles on eBay →
         </a>
+        <AffiliateDisclosure className="mt-1.5" />
       </div>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/30">

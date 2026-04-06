@@ -15,6 +15,7 @@ import { StoreTable } from "@/components/store-table";
 import { FilterBar } from "@/components/filter-bar";
 import { Pagination } from "@/components/pagination";
 import { HeroSearch } from "@/components/hero-search";
+import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
 import {
   Sword,
   BookOpen,
@@ -239,6 +240,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                 Shop Now →
               </span>
             </a>
+            <AffiliateDisclosure className="mt-1.5 px-1" />
           </section>
 
           {/* Store Type Cards */}
