@@ -14,6 +14,7 @@ from lgs_directory.discovery.dedup import DeduplicationResult, find_duplicate
 from lgs_directory.discovery.google_places import GooglePlaceRaw
 from lgs_directory.discovery.ingest import IngestReport, is_blocked_url
 from lgs_directory.discovery.normalize import normalize_address
+from lgs_directory.discovery.quality_filters import are_google_types_blocked, is_name_blocked
 from lgs_directory.models.enums import (
     ChannelType,
     DiscoverySource,
@@ -148,11 +149,26 @@ def ingest_google_stores(
         assert isinstance(existing_stores, list)
         logger.info("Loaded %d existing stores for deduplication", len(existing_stores))
 
+    filtered_count = 0
+
     for i, raw in enumerate(raw_stores):
         assert isinstance(raw, GooglePlaceRaw)
 
         if (i + 1) % _BATCH_LOG_INTERVAL == 0:
             logger.info("Processing Google place %d / %d ...", i + 1, report.total)
+
+        # 0. Quality filters — reject obvious non-game stores
+        if is_name_blocked(raw.name):
+            filtered_count += 1
+            report.skipped += 1
+            logger.debug("Filtered by name blocklist: %s", raw.name)
+            continue
+
+        if are_google_types_blocked(raw.types):
+            filtered_count += 1
+            report.skipped += 1
+            logger.debug("Filtered by Google types: %s (types=%s)", raw.name, raw.types)
+            continue
 
         # 1. Parse address
         addr = _parse_google_address(raw.address)
@@ -216,5 +232,7 @@ def ingest_google_stores(
                 assign_categories(new_store.id, default_categories, session)
             report.inserted += 1
 
+    if filtered_count > 0:
+        logger.info("Quality filters rejected %d stores", filtered_count)
     logger.info("%s", report)
     return report
