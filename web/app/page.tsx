@@ -11,7 +11,6 @@ import {
 } from "@/lib/queries";
 import { abbreviationToStateName } from "@/lib/slugs";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
-import { formatProduct } from "@/lib/format";
 import { StoreTable } from "@/components/store-table";
 import { FilterBar } from "@/components/filter-bar";
 import { Pagination } from "@/components/pagination";
@@ -69,7 +68,8 @@ export default async function HomePage({ searchParams }: PageProps) {
     typeof params.status === "string" ||
     typeof params.wpn === "string" ||
     typeof params.q === "string" ||
-    typeof params.category === "string";
+    typeof params.category === "string" ||
+    typeof params.game === "string";
 
   const rawPage =
     typeof params.page === "string" ? parseInt(params.page, 10) : 1;
@@ -78,9 +78,10 @@ export default async function HomePage({ searchParams }: PageProps) {
   const wpnLevel = typeof params.wpn === "string" ? params.wpn : undefined;
   const search = typeof params.q === "string" ? params.q : undefined;
   const category = typeof params.category === "string" ? params.category : undefined;
+  const game = typeof params.game === "string" ? params.game : undefined;
 
   const [initialResult, filterOptions, states, categoryStats, totalCount, popularCities, gameTags] = await Promise.all([
-    listStores({ page: rawPage, state, status, wpnLevel, search, category }),
+    listStores({ page: rawPage, state, status, wpnLevel, search, category, game }),
     getFilterOptions(),
     getStateIndex(),
     hasFilters ? Promise.resolve([]) : getCategoryStats(),
@@ -98,7 +99,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const result =
     safePage === rawPage
       ? initialResult
-      : await listStores({ page: safePage, state, status, wpnLevel, search, category });
+      : await listStores({ page: safePage, state, status, wpnLevel, search, category, game });
 
   // Build a map of game tag -> store count
   const tagCountMap = new Map<string, number>();
@@ -193,7 +194,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                 return (
                   <Link
                     key={game.key}
-                    href={`/?q=${encodeURIComponent(formatProduct(game.key))}`}
+                    href={`/?game=${encodeURIComponent(game.key)}`}
                     className={`group relative rounded-xl border bg-gradient-to-br p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${game.color}`}
                   >
                     <div className="flex items-start justify-between mb-2">

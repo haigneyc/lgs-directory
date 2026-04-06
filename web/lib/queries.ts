@@ -25,6 +25,7 @@ interface ListStoresParams {
   sellsSingles?: boolean;
   search?: string;
   category?: string;
+  game?: string;
 }
 
 interface ListStoresResult {
@@ -77,6 +78,14 @@ export async function listStores(
       WHERE category = $${idx++}
     )`);
     values.push(params.category);
+  }
+  if (params.game) {
+    conditions.push(`id IN (
+      SELECT store_id FROM store_external_refs
+      WHERE provider = 'website_content'
+        AND payload->'products' ? $${idx++}
+    )`);
+    values.push(params.game);
   }
 
   const where =
