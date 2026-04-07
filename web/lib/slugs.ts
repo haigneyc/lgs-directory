@@ -63,6 +63,27 @@ function stripLegalSuffix(name: string): string {
 }
 
 /**
+ * Run the standard slugify pipeline on a single string component.
+ * Lowercases, strips quotes entirely, then maps anything outside
+ * ``[a-z0-9 -]`` to a space, collapses whitespace and dash runs, and
+ * trims leading/trailing dashes. Mirrors ``_slug_part`` in
+ * ``scripts/backfill_store_slugs.py``.
+ */
+function slugifyPart(value: string): string {
+  console.assert(typeof value === "string", "slugifyPart: value must be a string");
+  const result = value
+    .toLowerCase()
+    .replace(QUOTE_CHARS_REGEX, "")
+    .replace(/[^a-z0-9 -]/g, " ")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+  console.assert(!result.includes("--"), "slugifyPart: result must not contain double hyphens");
+  return result;
+}
+
+/**
  * Build a store slug of the form
  * ``<store-name>-<city>-<state-abbr-lower>``. Pure ASCII, kebab-case,
  * collapsed dashes, trimmed to ``MAX_STORE_SLUG_LENGTH``.
@@ -90,16 +111,29 @@ export function buildStoreSlug(
   const cleanedName = stripLegalSuffix(storeName);
   console.assert(cleanedName.length > 0, "buildStoreSlug: cleanedName must be non-empty");
 
-  const parts = [cleanedName, city, stateAbbrev]
-    .map((s) => s.toLowerCase())
-    .join(" ");
+  const nameSlug = slugifyPart(cleanedName);
+  const citySlug = slugifyPart(city);
+  const stateSlug = slugifyPart(stateAbbrev);
+  console.assert(nameSlug.length > 0, "buildStoreSlug: nameSlug must be non-empty");
 
-  const ascii = parts
-    // Strip quote characters ENTIRELY first so "jan's" -> "jans".
-    .replace(QUOTE_CHARS_REGEX, "")
-    // Then strip everything else that isn't a-z, 0-9, space, or hyphen.
-    .replace(/[^a-z0-9 -]/g, " ")
-    .replace(/\s+/g, "-")
+  // De-duplicate the city when the store name already ends with it.
+  // Match on the SLUG forms (full suffix only) so partial-word matches
+  // like "Game Stop" / "Gamestown" do NOT trigger dedup.
+  const hasCity = citySlug.length > 0;
+  const nameEndsWithCity =
+    hasCity && (nameSlug === citySlug || nameSlug.endsWith("-" + citySlug));
+
+  const segments: string[] = [nameSlug];
+  if (hasCity && !nameEndsWithCity) {
+    segments.push(citySlug);
+  }
+  if (stateSlug.length > 0) {
+    segments.push(stateSlug);
+  }
+
+  const ascii = segments
+    .filter((s) => s.length > 0)
+    .join("-")
     .replace(/-{2,}/g, "-")
     .replace(/^-|-$/g, "");
 

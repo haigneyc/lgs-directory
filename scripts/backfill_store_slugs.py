@@ -119,10 +119,32 @@ def _normalize_state(raw: Optional[str]) -> str:
     return _STATE_NAME_TO_ABBR.get(s, s.replace(" ", "-"))
 
 
+def _slug_part(value: str) -> str:
+    """Run the standard slugify pipeline on a single string component.
+
+    Lowercases, strips quotes entirely, then maps anything outside
+    ``[a-z0-9 -]`` to a space, collapses whitespace and dash runs, and
+    trims leading/trailing dashes. Returns an empty string if the input
+    has no slug-safe characters.
+    """
+    assert isinstance(value, str), "value must be a string"
+    lowered = value.lower()
+    quoteless = _QUOTE_CHARS.sub("", lowered)
+    ascii_safe = _NON_SLUG_CHARS.sub(" ", quoteless)
+    dashed = _WHITESPACE.sub("-", ascii_safe.strip())
+    collapsed = _DASH_RUN.sub("-", dashed)
+    trimmed = _LEADING_TRAILING_DASH.sub("", collapsed)
+    assert "--" not in trimmed, "slug part contains double dashes"
+    return trimmed
+
+
 def _slugify(name: str, city: str, state_abbr: str) -> str:
     """Build the canonical slug for a store row.
 
-    Mirrors ``buildStoreSlug`` in ``web/lib/slugs.ts``. Asserts on every
+    Mirrors ``buildStoreSlug`` in ``web/lib/slugs.ts``. Slugifies the
+    name and city independently so we can detect when the store name
+    already ends with the city (e.g. "HobbyTown Sioux Falls" in Sioux
+    Falls, SD) and skip the redundant city append. Asserts on every
     branch so a regression in either side is caught immediately.
     """
     assert isinstance(name, str) and len(name) > 0, "name must be non-empty"
@@ -132,12 +154,25 @@ def _slugify(name: str, city: str, state_abbr: str) -> str:
     cleaned_name = _strip_legal_suffix(name)
     assert len(cleaned_name) > 0, "cleaned name must be non-empty"
 
-    joined = f"{cleaned_name} {city} {state_abbr}".lower()
-    # Strip quotes ENTIRELY first so "jan's" -> "jans" not "jan-s".
-    quoteless = _QUOTE_CHARS.sub("", joined)
-    ascii_safe = _NON_SLUG_CHARS.sub(" ", quoteless)
-    dashed = _WHITESPACE.sub("-", ascii_safe)
-    collapsed = _DASH_RUN.sub("-", dashed)
+    name_slug = _slug_part(cleaned_name)
+    city_slug = _slug_part(city)
+    state_slug = _slug_part(state_abbr)
+    assert len(name_slug) > 0, f"empty name slug for name={name!r}"
+
+    # De-duplicate city when the store name already ends with it (full
+    # suffix match on the SLUG forms only -- avoids partial-word false
+    # positives like "Game Stop" / "Gamestown").
+    has_city = len(city_slug) > 0
+    name_ends_with_city = has_city and (
+        name_slug == city_slug or name_slug.endswith("-" + city_slug)
+    )
+    if not has_city or name_ends_with_city:
+        parts = [name_slug, state_slug] if len(state_slug) > 0 else [name_slug]
+    else:
+        parts = [name_slug, city_slug, state_slug] if len(state_slug) > 0 else [name_slug, city_slug]
+
+    combined = "-".join(p for p in parts if len(p) > 0)
+    collapsed = _DASH_RUN.sub("-", combined)
     trimmed = _LEADING_TRAILING_DASH.sub("", collapsed)
     if len(trimmed) > _MAX_SLUG_LENGTH:
         trimmed = trimmed[:_MAX_SLUG_LENGTH]
