@@ -66,6 +66,8 @@ import { OtherCityStores } from "@/components/other-city-stores";
 import { StoreFaq } from "@/components/seo/store-faq";
 import { generateStoreFaq, buildFaqJsonLd } from "@/lib/faq";
 import { Badge } from "@/components/ui/badge";
+import { AmazonShelf } from "@/components/amazon/amazon-shelf";
+import { shelfForStoreCategory } from "@/lib/amazon-shelves";
 import {
   MapPin,
   Phone,
@@ -420,6 +422,11 @@ export default async function StoreDetailPage({ params }: PageProps) {
           <p className="text-zinc-400 text-sm whitespace-pre-wrap">{store.notes}</p>
         </div>
       )}
+
+      {/* Amazon affiliate shelf — contextual to the store's primary category. */}
+      <div className="border-t border-zinc-800/60 pt-8 mb-8">
+        <AmazonShelf shelf={shelfForStoreCategory(categories[0] ?? null)} />
+      </div>
 
       <JsonLd data={buildLocalBusinessJsonLd(store, enrichment, canonicalUrl)} />
       {faqItems.length > 0 && <JsonLd data={buildFaqJsonLd(faqItems)} />}

@@ -16,6 +16,8 @@ import { FilterBar } from "@/components/filter-bar";
 import { Pagination } from "@/components/pagination";
 import { HeroSearch } from "@/components/hero-search";
 import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
+import { AmazonShelf } from "@/components/amazon/amazon-shelf";
+import { SHELVES } from "@/lib/amazon-shelves";
 import {
   Sword,
   BookOpen,
@@ -344,6 +346,11 @@ export default async function HomePage({ searchParams }: PageProps) {
             total={result.total}
           />
         </Suspense>
+      </section>
+
+      {/* Amazon affiliate shelf — broad TCG audience default. */}
+      <section className="mx-auto max-w-7xl px-4 lg:px-6 pb-12">
+        <AmazonShelf shelf={SHELVES["tcg-essentials"]} compact />
       </section>
 
       {/* Browse by State -- always shown */}
