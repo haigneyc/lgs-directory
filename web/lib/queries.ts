@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { query } from "./db";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import type {
@@ -128,9 +129,18 @@ export async function listStores(
   return { stores, total, page, pageSize: PAGE_SIZE };
 }
 
-export async function getStore(
+/**
+ * Fetch a store with its online presences. Wrapped with React `cache()` so
+ * that repeated calls within the same request (e.g. `generateMetadata` +
+ * default export on `/store/[id]`) dedupe to a single pair of DB round-trips.
+ * Per-request memoization only — does not persist across requests.
+ */
+export const getStore = cache(async (
   id: string
-): Promise<StoreWithPresences | null> {
+): Promise<StoreWithPresences | null> => {
+  console.assert(typeof id === "string", "getStore: id must be a string");
+  console.assert(id.length > 0, "getStore: id must be non-empty");
+
   const storeRows = await query<Store>(
     "SELECT * FROM stores WHERE id = $1",
     [id]
@@ -147,7 +157,7 @@ export async function getStore(
   );
 
   return { ...storeRows[0], presences };
-}
+});
 
 export async function getNearbyStores(
   lat: number,
