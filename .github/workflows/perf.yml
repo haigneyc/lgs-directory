@@ -10,6 +10,10 @@ on:
     - cron: '17 4 * * *'  # nightly 04:17 UTC
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   lhci:
     name: Lighthouse CI
