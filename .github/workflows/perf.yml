@@ -25,17 +25,10 @@ jobs:
           node-version: '20'
       - name: Install Lighthouse CI
         run: npm i -g @lhci/cli@0.14.x
-      - name: Wait for Vercel preview
-        if: github.event_name == 'pull_request'
-        id: vercel
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          max_timeout: 600
       - name: Run Lighthouse CI
         working-directory: web
         env:
-          LHCI_BASE_URL: ${{ steps.vercel.outputs.url || 'https://rollforstore.com' }}
+          LHCI_BASE_URL: https://rollforstore.com
         run: lhci autorun --config=./lighthouserc.json
       - name: Upload LHCI artifacts
         if: always()
