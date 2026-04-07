@@ -21,9 +21,57 @@ export function isUuid(value: string): boolean {
 }
 
 /**
+ * Quote characters (straight + curly, single + double) that must be
+ * stripped ENTIRELY before slugification, so that "Jan's" becomes
+ * "jans" rather than "jan-s". Must stay in sync with the equivalent
+ * constant in ``scripts/backfill_store_slugs.py``.
+ */
+const QUOTE_CHARS_REGEX = /['\u2018\u2019\u201B\u201C\u201D\u201F"]/g;
+
+/**
+ * Trailing legal-entity tokens that should be stripped from a store
+ * name before slugification. Matched case-insensitively, only at the
+ * end of the string, optionally preceded by a comma and whitespace.
+ * Must stay in sync with ``_LEGAL_SUFFIX_REGEX`` in
+ * ``scripts/backfill_store_slugs.py``.
+ *
+ * Worked examples (see also _slugify in the python script):
+ *   "Jan's Tropical Fish"        -> "jans-tropical-fish"
+ *   "Bob's Tropical Fish"        -> "bobs-tropical-fish"
+ *   "Starjumpers Tank LLC"       -> "starjumpers-tank"
+ *   "Pam's Pets & Fish"          -> "pams-pets-fish"
+ *   "Aqua Cave Inc."             -> "aqua-cave"
+ *   "Fish R Us, Co."             -> "fish-r-us"
+ *   "A-Z Aquatic LLC"            -> "a-z-aquatic"
+ *   "The Fish People"            -> "the-fish-people"
+ *   "Co Company Stores"          -> "co-company-stores" (mid-name, not stripped)
+ */
+const LEGAL_SUFFIX_REGEX =
+  /[,\s]+(l\.?l\.?c\.?|inc\.?|incorporated|corp\.?|corporation|ltd\.?|limited|co\.?|company)\s*$/i;
+
+function stripLegalSuffix(name: string): string {
+  console.assert(typeof name === "string", "stripLegalSuffix: name must be a string");
+  // Apply repeatedly so "Foo Inc, LLC" loses both tokens.
+  let prev = name;
+  let next = name.replace(LEGAL_SUFFIX_REGEX, "");
+  for (let i = 0; i < 4 && next !== prev; i++) {
+    prev = next;
+    next = next.replace(LEGAL_SUFFIX_REGEX, "");
+  }
+  // If the entire name was a legal token, fall back to the original.
+  return next.trim().length > 0 ? next.trim() : name.trim();
+}
+
+/**
  * Build a store slug of the form
  * ``<store-name>-<city>-<state-abbr-lower>``. Pure ASCII, kebab-case,
  * collapsed dashes, trimmed to ``MAX_STORE_SLUG_LENGTH``.
+ *
+ * Pre-processing (must stay in lockstep with the python backfill):
+ *   1. Strip trailing legal-entity tokens from the store name only
+ *      (LLC, Inc, Corp, Ltd, Co, Company, etc.).
+ *   2. Strip ALL quote characters entirely so "Jan's" -> "jans".
+ *   3. Then run the standard non-alphanumeric -> hyphen pass.
  *
  * Backfill collision handling (e.g. two stores with identical name +
  * city) is the caller's responsibility -- typically by appending a
@@ -39,12 +87,17 @@ export function buildStoreSlug(
   console.assert(typeof city === "string", "buildStoreSlug: city must be a string");
   console.assert(typeof stateAbbrev === "string", "buildStoreSlug: stateAbbrev must be a string");
 
-  const parts = [storeName, city, stateAbbrev]
+  const cleanedName = stripLegalSuffix(storeName);
+  console.assert(cleanedName.length > 0, "buildStoreSlug: cleanedName must be non-empty");
+
+  const parts = [cleanedName, city, stateAbbrev]
     .map((s) => s.toLowerCase())
     .join(" ");
 
   const ascii = parts
-    // Strip everything that isn't a-z, 0-9, space, or hyphen.
+    // Strip quote characters ENTIRELY first so "jan's" -> "jans".
+    .replace(QUOTE_CHARS_REGEX, "")
+    // Then strip everything else that isn't a-z, 0-9, space, or hyphen.
     .replace(/[^a-z0-9 -]/g, " ")
     .replace(/\s+/g, "-")
     .replace(/-{2,}/g, "-")

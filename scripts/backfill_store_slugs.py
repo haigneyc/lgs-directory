@@ -44,6 +44,49 @@ _NON_SLUG_CHARS = re.compile(r"[^a-z0-9 -]")
 _WHITESPACE = re.compile(r"\s+")
 _DASH_RUN = re.compile(r"-{2,}")
 _LEADING_TRAILING_DASH = re.compile(r"^-+|-+$")
+# Quote characters (straight + curly) stripped ENTIRELY before
+# slugification, so "Jan's" becomes "jans" rather than "jan-s". Must
+# stay in sync with QUOTE_CHARS_REGEX in web/lib/slugs.ts.
+_QUOTE_CHARS = re.compile(r"['\u2018\u2019\u201B\u201C\u201D\u201F\"]")
+# Trailing legal-entity tokens stripped from the store name before
+# slugification. Case-insensitive, only at the end of the string,
+# optionally preceded by a comma and whitespace. Must stay in sync with
+# LEGAL_SUFFIX_REGEX in web/lib/slugs.ts.
+#
+# Worked examples (mirrors web/lib/slugs.ts):
+#   "Jan's Tropical Fish"   -> "jans-tropical-fish"
+#   "Bob's Tropical Fish"   -> "bobs-tropical-fish"
+#   "Starjumpers Tank LLC"  -> "starjumpers-tank"
+#   "Pam's Pets & Fish"     -> "pams-pets-fish"
+#   "Aqua Cave Inc."        -> "aqua-cave"
+#   "Fish R Us, Co."        -> "fish-r-us"
+#   "A-Z Aquatic LLC"       -> "a-z-aquatic"
+#   "The Fish People"       -> "the-fish-people"
+#   "Co Company Stores"     -> "co-company-stores" (mid-name, not stripped)
+_LEGAL_SUFFIX_REGEX = re.compile(
+    r"[,\s]+(l\.?l\.?c\.?|inc\.?|incorporated|corp\.?|corporation|"
+    r"ltd\.?|limited|co\.?|company)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_legal_suffix(name: str) -> str:
+    """Strip trailing legal-entity tokens from a store name.
+
+    Applied repeatedly so "Foo Inc, LLC" loses both tokens. Falls back
+    to the original name if stripping would leave an empty string.
+    """
+    assert isinstance(name, str), "name must be a string"
+    cleaned = name
+    for _ in range(4):
+        nxt = _LEGAL_SUFFIX_REGEX.sub("", cleaned)
+        if nxt == cleaned:
+            break
+        cleaned = nxt
+    cleaned = cleaned.strip()
+    if len(cleaned) == 0:
+        return name.strip()
+    return cleaned
 
 _STATE_NAME_TO_ABBR = {
     "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar",
@@ -86,8 +129,13 @@ def _slugify(name: str, city: str, state_abbr: str) -> str:
     assert isinstance(city, str), "city must be a string"
     assert isinstance(state_abbr, str), "state_abbr must be a string"
 
-    joined = f"{name} {city} {state_abbr}".lower()
-    ascii_safe = _NON_SLUG_CHARS.sub(" ", joined)
+    cleaned_name = _strip_legal_suffix(name)
+    assert len(cleaned_name) > 0, "cleaned name must be non-empty"
+
+    joined = f"{cleaned_name} {city} {state_abbr}".lower()
+    # Strip quotes ENTIRELY first so "jan's" -> "jans" not "jan-s".
+    quoteless = _QUOTE_CHARS.sub("", joined)
+    ascii_safe = _NON_SLUG_CHARS.sub(" ", quoteless)
     dashed = _WHITESPACE.sub("-", ascii_safe)
     collapsed = _DASH_RUN.sub("-", dashed)
     trimmed = _LEADING_TRAILING_DASH.sub("", collapsed)
