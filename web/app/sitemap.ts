@@ -19,7 +19,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
   });
 
-  // 2. Category pages (comics, retro-games, warhammer)
+  // 2. Affiliate disclosure (static legal page).
+  entries.push({
+    url: `${BASE_URL}/affiliate-disclosure`,
+    priority: 0.3,
+    changeFrequency: "yearly",
+  });
+
+  // 3. Category pages (comics, retro-games, warhammer)
   const categoryPaths = ["/comics", "/retro-games", "/warhammer"];
   console.assert(Array.isArray(categoryPaths), "sitemap: categoryPaths must be an array");
 
