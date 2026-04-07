@@ -59,9 +59,17 @@ export async function listStores(
   const page = params.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
 
+  // Always filter out closed/removed stores; allow explicit status override
   const conditions: string[] = [];
   const values: unknown[] = [];
   let idx = 1;
+
+  if (params.status) {
+    conditions.push(`status = $${idx++}`);
+    values.push(params.status);
+  } else {
+    conditions.push(`status IN ('active', 'verified', 'candidate')`);
+  }
 
   if (params.state) {
     conditions.push(`address->>'state' = $${idx++}`);
@@ -70,10 +78,6 @@ export async function listStores(
   if (params.city) {
     conditions.push(`UPPER(address->>'city') = UPPER($${idx++})`);
     values.push(params.city);
-  }
-  if (params.status) {
-    conditions.push(`status = $${idx++}`);
-    values.push(params.status);
   }
   if (params.wpnLevel) {
     conditions.push(`wpn_level = $${idx++}`);
@@ -106,8 +110,7 @@ export async function listStores(
     values.push(params.game);
   }
 
-  const where =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where = `WHERE ${conditions.join(" AND ")}`;
 
   const countRows = await query<{ total: number }>(
     `SELECT count(*)::int as total FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}`,
@@ -754,6 +757,7 @@ export async function listStoresByCategory(
   const offset = (page - 1) * PAGE_SIZE;
 
   const conditions: string[] = [
+    `status IN ('active', 'verified', 'candidate')`,
     `id IN (SELECT store_id FROM store_categories WHERE category = $1)`,
   ];
   const values: unknown[] = [category];
