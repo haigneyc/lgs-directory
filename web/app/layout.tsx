@@ -165,6 +165,11 @@ export default function RootLayout({
                       Privacy Policy
                     </Link>
                   </li>
+                  <li>
+                    <Link href="/affiliate-disclosure" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+                      Affiliate Disclosure
+                    </Link>
+                  </li>
                 </ul>
               </div>
               <div>
@@ -174,12 +179,25 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
-            <div className="mt-10 pt-6 border-t border-zinc-800/60 text-center text-xs text-zinc-600 flex items-center justify-center gap-3">
-              <span>Roll For Store</span>
-              <span className="text-zinc-700">|</span>
-              <Link href="/privacy-policy" className="hover:text-zinc-400 transition-colors">
-                Privacy Policy
-              </Link>
+            <div className="mt-10 pt-6 border-t border-zinc-800/60 text-center text-xs text-zinc-600 space-y-2">
+              <p className="italic">
+                As an Amazon Associate, RollForStore earns from qualifying purchases.{" "}
+                <Link href="/affiliate-disclosure" className="not-italic underline hover:text-zinc-400 transition-colors">
+                  Full disclosure
+                </Link>
+                .
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <span>Roll For Store</span>
+                <span className="text-zinc-700">|</span>
+                <Link href="/privacy-policy" className="hover:text-zinc-400 transition-colors">
+                  Privacy Policy
+                </Link>
+                <span className="text-zinc-700">|</span>
+                <Link href="/affiliate-disclosure" className="hover:text-zinc-400 transition-colors">
+                  Affiliate Disclosure
+                </Link>
+              </div>
             </div>
           </div>
         </footer>
