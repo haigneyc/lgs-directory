@@ -9,6 +9,8 @@ import { getCategoryRouteBySlug } from "@/lib/category-routes";
 import { CategoryTopCities } from "@/components/category-top-cities";
 import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
+import { AmazonShelf } from "@/components/amazon/amazon-shelf";
+import { SHELVES } from "@/lib/amazon-shelves";
 import { BookOpen } from "lucide-react";
 
 export const revalidate = 86400;
@@ -117,6 +119,10 @@ export default async function ComicsPage({ searchParams }: PageProps) {
           total={result.total}
         />
       </Suspense>
+
+      <div className="mt-10">
+        <AmazonShelf shelf={SHELVES["comics-storage"]} />
+      </div>
 
       {topCities.length > 0 && (
         <CategoryTopCities categoryLabel={CATEGORY.label} cities={topCities} />
