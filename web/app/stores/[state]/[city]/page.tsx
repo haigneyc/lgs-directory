@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { slugToState, slugToAbbreviation, slugToCity, stateToSlug, cityToSlug } from "@/lib/slugs";
-import { listStores, getOnlineStores, getNearbyCities, getCityDescription, getStoreEnrichments, getPopularCities } from "@/lib/queries";
+import { listStores, getOnlineStores, getNearbyCities, getCityDescription, getStoreEnrichments, getTopCityStateSlugs } from "@/lib/queries";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { StatsBar } from "@/components/stats-bar";
@@ -26,7 +26,7 @@ const TOP_CITIES_PRERENDER_LIMIT = 300;
  * pages stay on ISR on-demand. Per Nox QW-8 / PERF-001.
  */
 export async function generateStaticParams(): Promise<Array<{ state: string; city: string }>> {
-  const cities = await getPopularCities(TOP_CITIES_PRERENDER_LIMIT);
+  const cities = await getTopCityStateSlugs(TOP_CITIES_PRERENDER_LIMIT);
   console.assert(Array.isArray(cities), "generateStaticParams: cities must be an array");
   console.assert(cities.length <= TOP_CITIES_PRERENDER_LIMIT, "generateStaticParams: cities exceeded limit");
 

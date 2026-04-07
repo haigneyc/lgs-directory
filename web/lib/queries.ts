@@ -853,6 +853,39 @@ export async function getPopularCities(
 }
 
 /**
+ * Returns the top (state, city) slug pairs by store count, intended for
+ * build-time prerender (`generateStaticParams`) of `/stores/[state]/[city]`.
+ *
+ * Separate from `getPopularCities` so UI callers keep their 100-cap
+ * contract while the prerender path can request a larger set (up to 500)
+ * to bound build time while still covering long-tail traffic. Per Rex B1.
+ */
+export async function getTopCityStateSlugs(
+  limit: number
+): Promise<{ city: string; state: string }[]> {
+  console.assert(typeof limit === "number" && limit > 0, "getTopCityStateSlugs: limit must be positive");
+  console.assert(limit <= 500, "getTopCityStateSlugs: limit must be <= 500 (prerender bound)");
+
+  const rows = await query<{ city: string; state: string }>(
+    `SELECT
+       address->>'city' AS city,
+       address->>'state' AS state
+     FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
+       AND address->>'city' IS NOT NULL
+       AND address->>'state' IS NOT NULL
+     GROUP BY address->>'city', address->>'state'
+     ORDER BY COUNT(*) DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  console.assert(Array.isArray(rows), "getTopCityStateSlugs: rows must be an array");
+  return rows;
+}
+
+/**
  * Returns other stores in the same city, excluding the given store.
  * Used for "Other Stores in [City]" section on store detail pages.
  */
