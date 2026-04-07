@@ -1,0 +1,115 @@
+name: perf
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'perf/**'
+      - '.github/workflows/perf.yml'
+  schedule:
+    - cron: '17 4 * * *'  # nightly 04:17 UTC
+  workflow_dispatch: {}
+
+jobs:
+  lhci:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Lighthouse CI
+        run: npm i -g @lhci/cli@0.14.x
+      - name: Wait for Vercel preview
+        if: github.event_name == 'pull_request'
+        id: vercel
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 600
+      - name: Run Lighthouse CI
+        working-directory: web
+        env:
+          LHCI_BASE_URL: ${{ steps.vercel.outputs.url || 'https://rollforstore.com' }}
+        run: lhci autorun --config=./lighthouserc.json
+      - name: Upload LHCI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lhci
+          path: web/.lighthouseci/
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Lighthouse CI" >> "$GITHUB_STEP_SUMMARY"
+          ls -la web/.lighthouseci/ >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+
+  k6:
+    name: k6 Load Tests
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'perf')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+      - name: Run homepage load
+        env:
+          BASE_URL: https://rollforstore.com
+        run: k6 run --summary-export=summary-home.json perf/k6/homepage.js
+      - name: Run city-page load
+        env:
+          BASE_URL: https://rollforstore.com
+        run: k6 run --summary-export=summary-city.json perf/k6/city-page.js
+      - name: Run nearby-api load
+        env:
+          BASE_URL: https://rollforstore.com
+        run: k6 run --summary-export=summary-nearby.json perf/k6/nearby-api.js
+      - name: Upload k6 summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6
+          path: summary-*.json
+      - name: k6 summary
+        if: always()
+        run: |
+          echo "## k6 Load Summary" >> "$GITHUB_STEP_SUMMARY"
+          for f in summary-*.json; do
+            [ -f "$f" ] || continue
+            echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+            jq '.metrics.http_req_duration.values' "$f" >> "$GITHUB_STEP_SUMMARY" || true
+          done
+
+  db-explain:
+    name: DB EXPLAIN ANALYZE
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql and jq
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client jq
+      - name: Run EXPLAIN suite
+        env:
+          DATABASE_URL: ${{ secrets.PERF_READONLY_DATABASE_URL }}
+        run: bash perf/db/explain.sh
+      - name: Upload EXPLAIN results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-explain
+          path: perf/db/results/results-*.json
+      - name: EXPLAIN summary
+        if: always()
+        run: |
+          echo "## DB EXPLAIN ANALYZE" >> "$GITHUB_STEP_SUMMARY"
+          for f in perf/db/results/results-*.json; do
+            [ -f "$f" ] || continue
+            jq -r '.[] | "- \(.name): \(.plan[0]["Execution Time"]) ms"' "$f" >> "$GITHUB_STEP_SUMMARY" || true
+          done
+
+  # TODO(chris): cross-repo write to jarvis Team/data/perf/baselines.yaml.
+  # Out of scope for this repo — Chris will wire a follow-up job that
+  # downloads the lhci / k6 / db-explain artifacts and commits summaries
+  # to the jarvis repo via a PAT. Until then, artifacts + step summaries
+  # are the persistence mechanism.
