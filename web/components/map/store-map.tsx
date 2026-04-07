@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import Link from "next/link";
 import { formatCityState, formatDistance } from "@/lib/format";
+import { storeHref } from "@/lib/slugs";
 import type { StoreWithDistance } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
@@ -101,7 +102,7 @@ export default function StoreMap({
             <Popup>
               <div className="text-sm">
                 <Link
-                  href={`/store/${store.id}`}
+                  href={storeHref(store)}
                   className="font-medium text-blue-600 hover:underline"
                 >
                   {store.name}

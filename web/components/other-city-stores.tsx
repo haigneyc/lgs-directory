@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { storeHref } from "@/lib/slugs";
 import type { Store } from "@/lib/types";
 
 interface OtherCityStoresProps {
@@ -29,7 +30,7 @@ export function OtherCityStores({ stores, cityName, stateSlug, citySlug }: Other
         {displayed.map((store) => (
           <Link
             key={store.id}
-            href={`/store/${store.id}`}
+            href={storeHref(store)}
             className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:bg-zinc-800/60 transition-colors"
           >
             <p className="text-sm font-medium text-zinc-200 truncate">{store.name}</p>

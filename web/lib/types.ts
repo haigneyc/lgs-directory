@@ -77,6 +77,13 @@ export interface StoreAddress {
 
 export interface Store {
   id: string;
+  /**
+   * Human-readable URL slug, e.g. ``darke-depths-gaming-dayton-oh``.
+   * Backed by ``stores.slug`` (added in alembic c5e1a9f4b2d8). May be
+   * null on rows that have not yet been backfilled; once the column is
+   * promoted to NOT NULL post-backfill this can be tightened.
+   */
+  slug: string | null;
   name: string;
   address: StoreAddress;
   latitude: number | null;
@@ -135,6 +142,7 @@ export interface CityStats {
 
 export interface OnlineStore {
   store_id: string;
+  store_slug: string | null;
   store_name: string;
   presence_url: string;
   channel_type: ChannelType;

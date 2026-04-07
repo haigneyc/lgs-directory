@@ -1,5 +1,93 @@
 export const MAX_SLUG_LENGTH = 100;
 
+/**
+ * Hard upper bound on a store slug. Mirrors the
+ * ``stores.slug VARCHAR(160)`` column added in migration c5e1a9f4b2d8.
+ */
+export const MAX_STORE_SLUG_LENGTH = 160;
+
+/**
+ * RFC 4122 UUID v1-v5 format check. Used to detect when an old
+ * ``/store/<uuid>`` URL has been requested so we can 301-redirect it
+ * to the canonical slug URL.
+ */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string): boolean {
+  console.assert(typeof value === "string", "isUuid: value must be a string");
+  console.assert(value.length >= 0, "isUuid: value length must be non-negative");
+  return UUID_REGEX.test(value);
+}
+
+/**
+ * Build a store slug of the form
+ * ``<store-name>-<city>-<state-abbr-lower>``. Pure ASCII, kebab-case,
+ * collapsed dashes, trimmed to ``MAX_STORE_SLUG_LENGTH``.
+ *
+ * Backfill collision handling (e.g. two stores with identical name +
+ * city) is the caller's responsibility -- typically by appending a
+ * short suffix derived from the UUID. See
+ * ``scripts/backfill_store_slugs.py``.
+ */
+export function buildStoreSlug(
+  storeName: string,
+  city: string,
+  stateAbbrev: string
+): string {
+  console.assert(typeof storeName === "string" && storeName.length > 0, "buildStoreSlug: storeName must be non-empty");
+  console.assert(typeof city === "string", "buildStoreSlug: city must be a string");
+  console.assert(typeof stateAbbrev === "string", "buildStoreSlug: stateAbbrev must be a string");
+
+  const parts = [storeName, city, stateAbbrev]
+    .map((s) => s.toLowerCase())
+    .join(" ");
+
+  const ascii = parts
+    // Strip everything that isn't a-z, 0-9, space, or hyphen.
+    .replace(/[^a-z0-9 -]/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const truncated =
+    ascii.length > MAX_STORE_SLUG_LENGTH
+      ? ascii.slice(0, MAX_STORE_SLUG_LENGTH).replace(/-+$/g, "")
+      : ascii;
+
+  console.assert(truncated.length > 0, "buildStoreSlug: result must not be empty");
+  console.assert(truncated.length <= MAX_STORE_SLUG_LENGTH, "buildStoreSlug: result exceeds MAX_STORE_SLUG_LENGTH");
+  console.assert(!truncated.includes("--"), "buildStoreSlug: result must not contain double hyphens");
+
+  return truncated;
+}
+
+/**
+ * Returns the canonical site-relative path for a store, given its slug.
+ * Centralised so that callers (links, sitemap, JSON-LD, canonical tag)
+ * cannot drift apart.
+ */
+/**
+ * Returns the best site-relative path for a store. Prefers the
+ * human-readable slug; falls back to the legacy ``/store/<uuid>`` form
+ * for rows that have not yet been backfilled. The legacy form is still
+ * served (via 301 redirect) by the ``[slug]`` route.
+ */
+export function storeHref(store: { id: string; slug: string | null }): string {
+  console.assert(typeof store === "object" && store !== null, "storeHref: store must be an object");
+  console.assert(typeof store.id === "string" && store.id.length > 0, "storeHref: store.id must be non-empty");
+  if (store.slug !== null && store.slug.length > 0) {
+    return storeSlugPath(store.slug);
+  }
+  return `/store/${store.id}`;
+}
+
+export function storeSlugPath(slug: string): string {
+  console.assert(typeof slug === "string" && slug.length > 0, "storeSlugPath: slug must be non-empty");
+  console.assert(slug.length <= MAX_STORE_SLUG_LENGTH, "storeSlugPath: slug too long");
+  return `/store/${slug}`;
+}
+
 
 /**
  * Maps lowercase state names to two-letter abbreviations (all 50 states + DC).
