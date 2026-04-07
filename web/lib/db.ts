@@ -8,7 +8,14 @@ function getPool(): Pool {
     if (!connectionString) {
       throw new Error("DATABASE_URL environment variable is not set");
     }
-    _pool = new Pool({ connectionString });
+    // Cap per-instance connections so we don't exhaust the Supavisor
+    // pooler under concurrent load. Idle connections close after 10s
+    // so serverless invocations don't leak sockets. Per Nox A-6 / PERF-014.
+    _pool = new Pool({
+      connectionString,
+      max: 3,
+      idleTimeoutMillis: 10_000,
+    });
   }
   return _pool;
 }

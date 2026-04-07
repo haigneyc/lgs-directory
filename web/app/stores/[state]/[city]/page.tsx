@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { slugToState, slugToAbbreviation, slugToCity } from "@/lib/slugs";
-import { listStores, getOnlineStores, getNearbyCities, getCityDescription, getStoreEnrichments } from "@/lib/queries";
+import { slugToState, slugToAbbreviation, slugToCity, stateToSlug, cityToSlug } from "@/lib/slugs";
+import { listStores, getOnlineStores, getNearbyCities, getCityDescription, getStoreEnrichments, getTopCityStateSlugs } from "@/lib/queries";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { StatsBar } from "@/components/stats-bar";
@@ -15,6 +15,35 @@ import { SITE_URL } from "@/lib/site";
 import type { StoreWithDistance } from "@/lib/types";
 
 export const revalidate = 86400;
+
+/** Upper bound on prerendered city pages — keeps build time bounded. */
+const TOP_CITIES_PRERENDER_LIMIT = 300;
+
+/**
+ * Prerender the top ~300 (city, state) combinations at build time. These
+ * are the cities linked from the homepage "Popular Cities" module and
+ * receive most of the `/stores/[state]/[city]` traffic. All other city
+ * pages stay on ISR on-demand. Per Nox QW-8 / PERF-001.
+ */
+export async function generateStaticParams(): Promise<Array<{ state: string; city: string }>> {
+  const cities = await getTopCityStateSlugs(TOP_CITIES_PRERENDER_LIMIT);
+  console.assert(Array.isArray(cities), "generateStaticParams: cities must be an array");
+  console.assert(cities.length <= TOP_CITIES_PRERENDER_LIMIT, "generateStaticParams: cities exceeded limit");
+
+  const params: Array<{ state: string; city: string }> = [];
+  const max = Math.min(cities.length, TOP_CITIES_PRERENDER_LIMIT);
+  for (let i = 0; i < max; i++) {
+    const row = cities[i];
+    if (!row.state || !row.city) {
+      continue;
+    }
+    params.push({
+      state: stateToSlug(row.state),
+      city: cityToSlug(row.city),
+    });
+  }
+  return params;
+}
 
 interface PageProps {
   params: Promise<{ state: string; city: string }>;

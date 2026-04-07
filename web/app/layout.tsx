@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, DM_Sans } from "next/font/google";
 import Link from "next/link";
+import Script from "next/script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import {
@@ -73,8 +74,13 @@ export default function RootLayout({
     >
       <head>
         <meta name="impact-site-verification" content="a353081c-3a4d-42f0-a3d7-b95126dbf90a" />
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>
-        <script dangerouslySetInnerHTML={{ __html: GA_BOOTSTRAP_SCRIPT }} />
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-bootstrap" strategy="afterInteractive">
+          {GA_BOOTSTRAP_SCRIPT}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50 antialiased font-body">
         <header className="border-b border-amber-900/20 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-50">

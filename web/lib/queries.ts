@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { query } from "./db";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import type {
@@ -128,9 +129,18 @@ export async function listStores(
   return { stores, total, page, pageSize: PAGE_SIZE };
 }
 
-export async function getStore(
+/**
+ * Fetch a store with its online presences. Wrapped with React `cache()` so
+ * that repeated calls within the same request (e.g. `generateMetadata` +
+ * default export on `/store/[id]`) dedupe to a single pair of DB round-trips.
+ * Per-request memoization only — does not persist across requests.
+ */
+export const getStore = cache(async (
   id: string
-): Promise<StoreWithPresences | null> {
+): Promise<StoreWithPresences | null> => {
+  console.assert(typeof id === "string", "getStore: id must be a string");
+  console.assert(id.length > 0, "getStore: id must be non-empty");
+
   const storeRows = await query<Store>(
     "SELECT * FROM stores WHERE id = $1",
     [id]
@@ -147,7 +157,7 @@ export async function getStore(
   );
 
   return { ...storeRows[0], presences };
-}
+});
 
 export async function getNearbyStores(
   lat: number,
@@ -839,6 +849,39 @@ export async function getPopularCities(
   );
 
   console.assert(Array.isArray(rows), "getPopularCities: rows must be an array");
+  return rows;
+}
+
+/**
+ * Returns the top (state, city) slug pairs by store count, intended for
+ * build-time prerender (`generateStaticParams`) of `/stores/[state]/[city]`.
+ *
+ * Separate from `getPopularCities` so UI callers keep their 100-cap
+ * contract while the prerender path can request a larger set (up to 500)
+ * to bound build time while still covering long-tail traffic. Per Rex B1.
+ */
+export async function getTopCityStateSlugs(
+  limit: number
+): Promise<{ city: string; state: string }[]> {
+  console.assert(typeof limit === "number" && limit > 0, "getTopCityStateSlugs: limit must be positive");
+  console.assert(limit <= 500, "getTopCityStateSlugs: limit must be <= 500 (prerender bound)");
+
+  const rows = await query<{ city: string; state: string }>(
+    `SELECT
+       address->>'city' AS city,
+       address->>'state' AS state
+     FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
+       AND address->>'city' IS NOT NULL
+       AND address->>'state' IS NOT NULL
+     GROUP BY address->>'city', address->>'state'
+     ORDER BY COUNT(*) DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  console.assert(Array.isArray(rows), "getTopCityStateSlugs: rows must be an array");
   return rows;
 }
 
