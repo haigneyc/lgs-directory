@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
 import { getStore, getStoreEnrichment, getStoreContent, getStoreCategories, getOtherStoresInCity } from "@/lib/queries";
 import { stateToSlug, cityToSlug, abbreviationToStateName } from "@/lib/slugs";
+import { SITE_URL } from "@/lib/site";
 import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
@@ -39,9 +40,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Store Not Found | Roll For Store" };
   }
 
+  const canonicalPath = `/store/${store.id}`;
   return {
     title: `${store.name} | Roll For Store`,
     description: `${store.name} in ${store.address.city}, ${store.address.state}. View hours, online presence, and WPN status.`,
+    alternates: {
+      canonical: canonicalPath,
+    },
   };
 }
 
@@ -352,7 +357,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      <JsonLd data={buildLocalBusinessJsonLd(store, enrichment)} />
+      <JsonLd data={buildLocalBusinessJsonLd(store, enrichment, `${SITE_URL}/store/${store.id}`)} />
       {faqItems.length > 0 && <JsonLd data={buildFaqJsonLd(faqItems)} />}
     </div>
   );
@@ -371,26 +376,28 @@ const SCHEMA_DAY_NAMES = [
 
 function buildLocalBusinessJsonLd(
   store: Awaited<ReturnType<typeof getStore>> & object,
-  enrichment: Awaited<ReturnType<typeof getStoreEnrichment>>
+  enrichment: Awaited<ReturnType<typeof getStoreEnrichment>>,
+  canonicalUrl: string
 ): Record<string, unknown> {
   console.assert(store !== null, "buildLocalBusinessJsonLd: store must not be null");
   console.assert(typeof store.name === "string", "buildLocalBusinessJsonLd: store.name must be a string");
+  console.assert(typeof canonicalUrl === "string" && canonicalUrl.length > 0, "buildLocalBusinessJsonLd: canonicalUrl must be non-empty");
 
-  const websitePresence = store.presences.find(
-    (p) => p.channel_type === "website" && p.status === "active"
-  );
+  // PostalAddress sub-schema -- only include fields that exist on the row.
+  const postalAddress: Record<string, unknown> = { "@type": "PostalAddress" };
+  if (store.address.street) postalAddress.streetAddress = store.address.street;
+  if (store.address.city) postalAddress.addressLocality = store.address.city;
+  if (store.address.state) postalAddress.addressRegion = store.address.state;
+  if (store.address.zip_code) postalAddress.postalCode = store.address.zip_code;
+  postalAddress.addressCountry = "US";
 
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
+    "@id": canonicalUrl,
     name: store.name,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: store.address.street,
-      addressLocality: store.address.city,
-      addressRegion: store.address.state,
-      postalCode: store.address.zip_code,
-    },
+    url: canonicalUrl,
+    address: postalAddress,
   };
 
   if (store.phone) {
@@ -405,8 +412,20 @@ function buildLocalBusinessJsonLd(
     };
   }
 
-  if (websitePresence) {
-    data.url = websitePresence.url;
+  // sameAs: include the store's own website + any other active external presences.
+  // This is the recommended schema.org pattern for linking the entity to its
+  // canonical web presences (vs. using `url`, which we reserve for the
+  // canonical store-page URL on rollforstore.com).
+  const sameAs: string[] = [];
+  const presenceLimit = Math.min(store.presences.length, 50);
+  for (let i = 0; i < presenceLimit; i++) {
+    const p = store.presences[i];
+    if (p.status === "active" && typeof p.url === "string" && p.url.length > 0) {
+      sameAs.push(p.url);
+    }
+  }
+  if (sameAs.length > 0) {
+    data.sameAs = sameAs;
   }
 
   // Add OpeningHoursSpecification from periods data
