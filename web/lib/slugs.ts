@@ -118,17 +118,32 @@ export function buildStoreSlug(
 
   // De-duplicate the city when the store name already ends with it.
   // Match on the SLUG forms (full suffix only) so partial-word matches
-  // like "Game Stop" / "Gamestown" do NOT trigger dedup.
+  // like "Game Stop" / "Gamestown" do NOT trigger dedup. Check the
+  // longer "-city-state" suffix BEFORE "-city" so names like
+  // "Game X Change Gainesville TX" in Gainesville, TX emit as-is
+  // rather than appending "-tx" twice.
   const hasCity = citySlug.length > 0;
+  const hasState = stateSlug.length > 0;
+  const cityStateSuffix = "-" + citySlug + "-" + stateSlug;
+  const cityStateWhole = citySlug + "-" + stateSlug;
+  const citySuffix = "-" + citySlug;
+  const nameEndsWithCityState =
+    hasCity &&
+    hasState &&
+    (nameSlug === cityStateWhole || nameSlug.endsWith(cityStateSuffix));
   const nameEndsWithCity =
-    hasCity && (nameSlug === citySlug || nameSlug.endsWith("-" + citySlug));
+    hasCity && (nameSlug === citySlug || nameSlug.endsWith(citySuffix));
 
   const segments: string[] = [nameSlug];
-  if (hasCity && !nameEndsWithCity) {
-    segments.push(citySlug);
-  }
-  if (stateSlug.length > 0) {
-    segments.push(stateSlug);
+  if (nameEndsWithCityState) {
+    // Name already contains "-city-state"; emit name as-is (no city, no state).
+  } else {
+    if (hasCity && !nameEndsWithCity) {
+      segments.push(citySlug);
+    }
+    if (hasState) {
+      segments.push(stateSlug);
+    }
   }
 
   const ascii = segments

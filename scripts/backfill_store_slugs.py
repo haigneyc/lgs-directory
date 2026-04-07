@@ -161,15 +161,30 @@ def _slugify(name: str, city: str, state_abbr: str) -> str:
 
     # De-duplicate city when the store name already ends with it (full
     # suffix match on the SLUG forms only -- avoids partial-word false
-    # positives like "Game Stop" / "Gamestown").
+    # positives like "Game Stop" / "Gamestown"). Check the longer
+    # ``-city-state`` suffix BEFORE the shorter ``-city`` suffix, so
+    # names like "Game X Change Gainesville TX" in Gainesville, TX emit
+    # as-is rather than appending "-tx" twice.
     has_city = len(city_slug) > 0
-    name_ends_with_city = has_city and (
-        name_slug == city_slug or name_slug.endswith("-" + city_slug)
+    has_state = len(state_slug) > 0
+    city_state_suffix = f"-{city_slug}-{state_slug}"
+    city_state_whole = f"{city_slug}-{state_slug}"
+    city_suffix = f"-{city_slug}"
+    name_ends_with_city_state = (
+        has_city
+        and has_state
+        and (name_slug == city_state_whole or name_slug.endswith(city_state_suffix))
     )
-    if not has_city or name_ends_with_city:
-        parts = [name_slug, state_slug] if len(state_slug) > 0 else [name_slug]
+    name_ends_with_city = has_city and (
+        name_slug == city_slug or name_slug.endswith(city_suffix)
+    )
+    if name_ends_with_city_state:
+        # Name already contains "-city-state"; emit the name as-is.
+        parts = [name_slug]
+    elif not has_city or name_ends_with_city:
+        parts = [name_slug, state_slug] if has_state else [name_slug]
     else:
-        parts = [name_slug, city_slug, state_slug] if len(state_slug) > 0 else [name_slug, city_slug]
+        parts = [name_slug, city_slug, state_slug] if has_state else [name_slug, city_slug]
 
     combined = "-".join(p for p in parts if len(p) > 0)
     collapsed = _DASH_RUN.sub("-", combined)
