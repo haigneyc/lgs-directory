@@ -16,6 +16,24 @@ import type {
 
 const PAGE_SIZE = 25;
 
+/**
+ * SQL fragment that filters out unverified candidate stores.
+ * Candidate stores are hidden unless they have a trusted external ref
+ * (WPN registration or content scraper that found game products).
+ * This prevents low-quality Google Places-only candidates from appearing.
+ */
+const TRUSTED_CANDIDATE_FILTER = `
+  AND NOT (
+    status = 'candidate'
+    AND wpn_id IS NULL
+    AND id NOT IN (
+      SELECT store_id FROM store_external_refs
+      WHERE provider = 'website_content'
+        AND jsonb_array_length(COALESCE(payload->'products', '[]'::jsonb)) > 0
+    )
+  )
+`;
+
 interface ListStoresParams {
   page?: number;
   state?: string;
@@ -92,13 +110,13 @@ export async function listStores(
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const countRows = await query<{ total: number }>(
-    `SELECT count(*)::int as total FROM stores ${where}`,
+    `SELECT count(*)::int as total FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}`,
     values
   );
   const total = countRows[0]?.total ?? 0;
 
   const stores = await query<Store>(
-    `SELECT * FROM stores ${where}
+    `SELECT * FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}
      ORDER BY name ASC
      LIMIT $${idx++} OFFSET $${idx++}`,
     [...values, PAGE_SIZE, offset]
@@ -151,6 +169,7 @@ export async function getNearbyStores(
      WHERE latitude IS NOT NULL
        AND longitude IS NOT NULL
        AND status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
        AND latitude BETWEEN $3 AND $4
        AND longitude BETWEEN $5 AND $6
      ORDER BY distance_miles
@@ -214,6 +233,7 @@ export async function getStateIndex(): Promise<StateStats[]> {
        ))::int AS online_count
      FROM stores
      WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
        AND address->>'state' IS NOT NULL
      GROUP BY address->>'state'
      ORDER BY store_count DESC`
@@ -262,6 +282,7 @@ export async function getCityIndex(stateDbName: string): Promise<CityStats[]> {
        ))::int AS online_count
      FROM stores
      WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
        AND UPPER(address->>'state') = UPPER($1)
        AND address->>'city' IS NOT NULL
      GROUP BY address->>'city'
@@ -390,6 +411,7 @@ export async function getNearbyCities(
        ))::int AS online_count
      FROM stores
      WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
        AND UPPER(address->>'state') = UPPER($1)
        AND UPPER(address->>'city') != UPPER($2)
        AND address->>'city' IS NOT NULL
@@ -749,13 +771,13 @@ export async function listStoresByCategory(
   const where = `WHERE ${conditions.join(" AND ")}`;
 
   const countRows = await query<{ total: number }>(
-    `SELECT count(*)::int as total FROM stores ${where}`,
+    `SELECT count(*)::int as total FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}`,
     values
   );
   const total = countRows[0]?.total ?? 0;
 
   const stores = await query<Store>(
-    `SELECT * FROM stores ${where}
+    `SELECT * FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}
      ORDER BY name ASC
      LIMIT $${idx++} OFFSET $${idx++}`,
     [...values, PAGE_SIZE, offset]
@@ -781,7 +803,8 @@ export async function getCategoryStats(): Promise<
 export async function getTotalStoreCount(): Promise<number> {
   const rows = await query<{ total: number }>(
     `SELECT count(*)::int as total FROM stores
-     WHERE status IN ('active', 'verified', 'candidate')`
+     WHERE status IN ('active', 'verified', 'candidate')
+     ${TRUSTED_CANDIDATE_FILTER}`
   );
 
   console.assert(Array.isArray(rows), "getTotalStoreCount: rows must be an array");
@@ -802,6 +825,7 @@ export async function getPopularCities(
        COUNT(*)::int AS store_count
      FROM stores
      WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
        AND address->>'city' IS NOT NULL
        AND address->>'state' IS NOT NULL
      GROUP BY address->>'city', address->>'state'
@@ -835,6 +859,7 @@ export async function getOtherStoresInCity(
        AND UPPER(address->>'city') = UPPER($2)
        AND id != $3
        AND status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_FILTER}
      ORDER BY name ASC
      LIMIT $4`,
     [state, city, storeId, limit]
@@ -864,6 +889,15 @@ export async function getTopCitiesForCategory(
      INNER JOIN store_categories sc ON sc.store_id = s.id
      WHERE sc.category = $1
        AND s.status IN ('active', 'verified', 'candidate')
+       AND NOT (
+         s.status = 'candidate'
+         AND s.wpn_id IS NULL
+         AND s.id NOT IN (
+           SELECT store_id FROM store_external_refs
+           WHERE provider = 'website_content'
+             AND jsonb_array_length(COALESCE(payload->'products', '[]'::jsonb)) > 0
+         )
+       )
        AND s.address->>'city' IS NOT NULL
        AND s.address->>'state' IS NOT NULL
      GROUP BY s.address->>'city', s.address->>'state'
