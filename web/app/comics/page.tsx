@@ -14,8 +14,6 @@ import { SHELVES } from "@/lib/amazon-shelves";
 import { BookOpen } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-export const revalidate = 86400;
-
 const CATEGORY = getCategoryRouteBySlug("comics")!;
 console.assert(CATEGORY !== null, "comics category route must exist");
 

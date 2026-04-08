@@ -3,8 +3,6 @@ import Link from "next/link";
 import { SITE_URL } from "@/lib/site";
 import { AMAZON_DISCLOSURE_TEXT } from "@/lib/amazon";
 
-export const revalidate = 86400;
-
 export const metadata: Metadata = {
   title: "Affiliate Disclosure | Roll For Store",
   description:

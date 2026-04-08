@@ -79,9 +79,6 @@ import {
   Tag,
 } from "lucide-react";
 
-/** Revalidate store detail pages every 24 hours -- data changes daily at most */
-export const revalidate = 86400;
-
 interface PageProps {
   params: Promise<{ slug: string }>;
 }

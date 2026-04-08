@@ -30,9 +30,6 @@ import {
 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-/** Revalidate homepage every hour -- aggregate stats change slowly */
-export const revalidate = 3600;
-
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }

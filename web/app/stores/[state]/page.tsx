@@ -15,8 +15,6 @@ import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-export const revalidate = 86400;
-
 interface PageProps {
   params: Promise<{ state: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;

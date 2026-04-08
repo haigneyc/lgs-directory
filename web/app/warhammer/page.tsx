@@ -14,8 +14,6 @@ import { SHELVES } from "@/lib/amazon-shelves";
 import { Shield } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-export const revalidate = 86400;
-
 const CATEGORY = getCategoryRouteBySlug("warhammer")!;
 console.assert(CATEGORY !== null, "warhammer category route must exist");
 

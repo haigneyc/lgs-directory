@@ -15,8 +15,6 @@ import { SITE_URL } from "@/lib/site";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-export const revalidate = 86400;
-
 /** Upper bound on prerendered city pages — keeps build time bounded. */
 const TOP_CITIES_PRERENDER_LIMIT = 300;
 

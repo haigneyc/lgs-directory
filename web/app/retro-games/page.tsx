@@ -14,8 +14,6 @@ import { SHELVES } from "@/lib/amazon-shelves";
 import { Gamepad2 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
-export const revalidate = 86400;
-
 const CATEGORY = getCategoryRouteBySlug("retro-games")!;
 console.assert(CATEGORY !== null, "retro-games category route must exist");
 
