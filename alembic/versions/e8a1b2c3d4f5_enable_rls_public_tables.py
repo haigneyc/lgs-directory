@@ -30,7 +30,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e8a1b2c3d4f5"
-down_revision: Union[str, Sequence[str], None] = "d7a3b1c9e4f2"
+down_revision: Union[str, Sequence[str], None] = "c5e1a9f4b2d8"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -57,11 +57,17 @@ def upgrade() -> None:
     for table in PUBLIC_READ_TABLES:
         policy = f"anon_select_{table}"
         op.execute(
+            f'DROP POLICY IF EXISTS "{policy}" ON public."{table}";'
+        )
+        op.execute(
             f'CREATE POLICY "{policy}" ON public."{table}" '
             f"FOR SELECT TO anon USING (true);"
         )
         # Mirror for authenticated users so future auth flows still read.
         auth_policy = f"authenticated_select_{table}"
+        op.execute(
+            f'DROP POLICY IF EXISTS "{auth_policy}" ON public."{table}";'
+        )
         op.execute(
             f'CREATE POLICY "{auth_policy}" ON public."{table}" '
             f"FOR SELECT TO authenticated USING (true);"
