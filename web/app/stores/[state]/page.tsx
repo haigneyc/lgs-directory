@@ -13,6 +13,7 @@ import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
 import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
+import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
 export const revalidate = 86400;
 
@@ -68,7 +69,129 @@ export async function generateStaticParams(): Promise<{ state: string }[]> {
 
 const MAX_JSON_LD_ITEMS = 25;
 
-export default async function StatePage({ params, searchParams }: Readonly<PageProps>) {
+/**
+ * Synchronous shell — MUST NOT await anything (PERF-026). Both `params`
+ * and `searchParams` are forwarded to async children as unresolved
+ * Promises. The shell itself renders only static chrome so it can be
+ * prerendered and cached at the edge.
+ */
+export default function StatePage({ params, searchParams }: Readonly<PageProps>) {
+  console.assert(typeof params === "object", "StatePage: params must be an object (Promise)");
+  console.assert(typeof searchParams === "object", "StatePage: searchParams must be an object (Promise)");
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+      <Suspense fallback={null}>
+        <StaticStateHeader params={params} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <StaticStateStats params={params} />
+      </Suspense>
+
+      <Suspense fallback={<StoreTableSkeleton />}>
+        <DynamicStoresSection params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+/**
+ * Header block — depends only on params, not searchParams. Prerenders
+ * for any state slug in generateStaticParams.
+ */
+async function StaticStateHeader({
+  params,
+}: Readonly<{ params: Promise<{ state: string }> }>) {
+  const { state: stateSlug } = await params;
+  const stateName = slugToState(stateSlug);
+  if (stateName === null) {
+    notFound();
+  }
+
+  console.assert(typeof stateName === "string", "StaticStateHeader: stateName must be a string");
+
+  const breadcrumbItems = [
+    { name: "Home", href: "/" },
+    { name: stateName, href: `/stores/${stateSlug}` },
+  ];
+
+  return (
+    <>
+      <Breadcrumb items={breadcrumbItems} />
+      <div className="mb-6 mt-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-600/10 text-yellow-500">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">
+            Game Stores in {stateName}
+          </h1>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Stats + city grid — depends on params only, not searchParams. Also
+ * prerenderable.
+ */
+async function StaticStateStats({
+  params,
+}: Readonly<{ params: Promise<{ state: string }> }>) {
+  const { state: stateSlug } = await params;
+  const stateName = slugToState(stateSlug);
+  if (stateName === null) {
+    return null;
+  }
+
+  const abbrev = slugToAbbreviation(stateSlug);
+  console.assert(abbrev !== null, "StaticStateStats: abbrev must not be null");
+
+  const [cities, stateStats] = await Promise.all([
+    getCityIndex(abbrev ?? stateName),
+    getStateIndex(),
+  ]);
+
+  const currentStats = stateStats.find((s) => s.slug === stateSlug);
+  const storeCount = currentStats?.store_count ?? 0;
+  const activeCount = currentStats?.active_count ?? 0;
+  const wpnPremiumCount = currentStats?.wpn_premium_count ?? 0;
+  const onlineCount = currentStats?.online_count ?? 0;
+
+  return (
+    <>
+      <StatsBar
+        storeCount={storeCount}
+        activeCount={activeCount}
+        wpnPremiumCount={wpnPremiumCount}
+        onlineCount={onlineCount}
+      />
+
+      {cities.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-lg font-semibold mb-4">
+            Cities in {stateName}
+          </h2>
+          <CityGrid stateSlug={stateSlug} cities={cities} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Paginated store listing + map + JSON-LD — depends on searchParams so
+ * it streams in as a dynamic hole under the static shell.
+ */
+async function DynamicStoresSection({
+  params,
+  searchParams,
+}: Readonly<{
+  params: Promise<{ state: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}>) {
   const { state: stateSlug } = await params;
   const sp = await searchParams;
 
@@ -78,28 +201,21 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
   }
 
   const abbrev = slugToAbbreviation(stateSlug);
-  console.assert(typeof stateName === "string", "StatePage: stateName must be a string");
-  console.assert(abbrev !== null, "StatePage: abbrev must not be null for a valid state");
+  console.assert(typeof stateName === "string", "DynamicStoresSection: stateName must be a string");
+  console.assert(abbrev !== null, "DynamicStoresSection: abbrev must not be null for a valid state");
 
   const rawPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
 
-  const [initialResult, cities, stateStats] = await Promise.all([
-    listStores({ state: abbrev ?? undefined, page: rawPage }),
-    getCityIndex(abbrev ?? stateName),
-    getStateIndex(),
-  ]);
+  const initialResult = await listStores({ state: abbrev ?? undefined, page: rawPage });
 
-  // Clamp page to valid range so out-of-range pages show the last valid page
   const totalPages = Math.ceil(initialResult.total / initialResult.pageSize) || 1;
   const safePage = Math.min(Math.max(1, rawPage), totalPages);
 
-  // Re-fetch with clamped page only if the requested page was out of range
   const result =
     safePage === rawPage
       ? initialResult
       : await listStores({ state: abbrev ?? undefined, page: safePage });
 
-  // Build StoreWithDistance[] for the map -- add distance_miles: 0
   const storesWithCoords: StoreWithDistance[] = [];
   const storeLimit = Math.min(result.stores.length, 500);
   for (let i = 0; i < storeLimit; i++) {
@@ -109,20 +225,9 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
     }
   }
 
-  // Use first store with coordinates as map center
   const centerLat = storesWithCoords.length > 0 ? storesWithCoords[0].latitude! : 39.8283;
   const centerLng = storesWithCoords.length > 0 ? storesWithCoords[0].longitude! : -98.5795;
 
-  // Look up accurate stats from getStateIndex (aggregated server-side)
-  const currentStats = stateStats.find(
-    (s) => s.slug === stateSlug
-  );
-  const storeCount = currentStats?.store_count ?? result.total;
-  const activeCount = currentStats?.active_count ?? 0;
-  const wpnPremiumCount = currentStats?.wpn_premium_count ?? 0;
-  const onlineCount = currentStats?.online_count ?? 0;
-
-  // Build JSON-LD ItemList of LocalBusiness (first 25 stores)
   const jsonLdLimit = Math.min(result.stores.length, MAX_JSON_LD_ITEMS);
   const itemListElements: Record<string, unknown>[] = [];
   for (let i = 0; i < jsonLdLimit; i++) {
@@ -161,33 +266,8 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
     itemListElement: itemListElements,
   };
 
-  const breadcrumbItems = [
-    { name: "Home", href: "/" },
-    { name: stateName, href: `/stores/${stateSlug}` },
-  ];
-
   return (
-    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
-      <Breadcrumb items={breadcrumbItems} />
-
-      <div className="mb-6 mt-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-600/10 text-yellow-500">
-            <MapPin className="w-5 h-5" />
-          </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">
-            Game Stores in {stateName}
-          </h1>
-        </div>
-      </div>
-
-      <StatsBar
-        storeCount={storeCount}
-        activeCount={activeCount}
-        wpnPremiumCount={wpnPremiumCount}
-        onlineCount={onlineCount}
-      />
-
+    <>
       {storesWithCoords.length > 0 && (
         <div className="mb-8">
           <div className="rounded-xl border border-zinc-800 overflow-hidden h-96 bg-zinc-900">
@@ -205,15 +285,6 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
               />
             </Suspense>
           </div>
-        </div>
-      )}
-
-      {cities.length > 0 && (
-        <div className="mb-8">
-          <h2 className="font-display text-lg font-semibold mb-4">
-            Cities in {stateName}
-          </h2>
-          <CityGrid stateSlug={stateSlug} cities={cities} />
         </div>
       )}
 
@@ -235,6 +306,6 @@ export default async function StatePage({ params, searchParams }: Readonly<PageP
       </div>
 
       <JsonLd data={jsonLdData} />
-    </div>
+    </>
   );
 }
