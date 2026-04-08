@@ -99,7 +99,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const store = await getStoreBySlug(slug);
   if (!store) {
-    return { title: "Store Not Found | Roll For Store" };
+    // Trigger Next.js HTTP 404 from metadata so the response status is
+    // set before the page body runs. Returning a metadata object here
+    // (even with a "Store Not Found" title) yields a soft 404 -- the
+    // page renders with HTTP 200, which prevents Google from deindexing
+    // stale URLs.
+    notFound();
   }
 
   const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
