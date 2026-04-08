@@ -13,6 +13,7 @@ import { NearbyCities } from "@/components/nearby-cities";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
 import type { StoreWithDistance } from "@/lib/types";
+import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
 export const revalidate = 86400;
 
@@ -88,7 +89,75 @@ export async function generateMetadata(
 
 const MAX_JSON_LD_ITEMS = 25;
 
-export default async function CityPage({ params, searchParams }: Readonly<PageProps>) {
+/**
+ * Synchronous shell — MUST NOT await anything (PERF-026). `params` and
+ * `searchParams` are forwarded as unresolved Promises to async children.
+ */
+export default function CityPage({ params, searchParams }: Readonly<PageProps>) {
+  console.assert(typeof params === "object", "CityPage: params must be an object (Promise)");
+  console.assert(typeof searchParams === "object", "CityPage: searchParams must be an object (Promise)");
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+      <Suspense fallback={null}>
+        <StaticCityHeader params={params} />
+      </Suspense>
+
+      <Suspense fallback={<StoreTableSkeleton />}>
+        <DynamicCitySection params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+/**
+ * Breadcrumb + title — depends only on params, prerenderable for any
+ * top-300 city slug.
+ */
+async function StaticCityHeader({
+  params,
+}: Readonly<{ params: Promise<{ state: string; city: string }> }>) {
+  const { state: stateSlug, city: citySlug } = await params;
+  const stateName = slugToState(stateSlug);
+  if (stateName === null) {
+    notFound();
+  }
+
+  const abbrev = slugToAbbreviation(stateSlug);
+  const cityName = slugToCity(citySlug);
+  console.assert(typeof stateName === "string", "StaticCityHeader: stateName must be a string");
+  console.assert(abbrev !== null, "StaticCityHeader: abbrev must not be null");
+
+  const breadcrumbItems = [
+    { name: "Home", href: "/" },
+    { name: stateName, href: `/stores/${stateSlug}` },
+    { name: cityName, href: `/stores/${stateSlug}/${citySlug}` },
+  ];
+
+  return (
+    <>
+      <Breadcrumb items={breadcrumbItems} />
+      <div className="mb-6 mt-6">
+        <h1 className="font-display text-2xl font-bold tracking-tight mb-1">
+          Game Stores in {cityName}, {abbrev}
+        </h1>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Paginated body — awaits searchParams, so it streams in under the
+ * prerendered shell. Also handles the notFound case (when a city has
+ * zero stores) because that decision depends on the data fetch.
+ */
+async function DynamicCitySection({
+  params,
+  searchParams,
+}: Readonly<{
+  params: Promise<{ state: string; city: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}>) {
   const { state: stateSlug, city: citySlug } = await params;
   const sp = await searchParams;
 
@@ -100,8 +169,8 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
   const abbrev = slugToAbbreviation(stateSlug);
   const cityName = slugToCity(citySlug);
 
-  console.assert(typeof stateName === "string", "CityPage: stateName must be a string");
-  console.assert(abbrev !== null, "CityPage: abbrev must not be null for a valid state");
+  console.assert(typeof stateName === "string", "DynamicCitySection: stateName must be a string");
+  console.assert(abbrev !== null, "DynamicCitySection: abbrev must not be null for a valid state");
 
   const rawPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
 
@@ -117,21 +186,17 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
     notFound();
   }
 
-  // Clamp page to valid range so out-of-range pages show the last valid page
   const totalPages = Math.ceil(initialResult.total / initialResult.pageSize) || 1;
   const safePage = Math.min(Math.max(1, rawPage), totalPages);
 
-  // Re-fetch with clamped page only if the requested page was out of range
   const result =
     safePage === rawPage
       ? initialResult
       : await listStores({ state: abbrev ?? undefined, city: cityName, page: safePage });
 
-  // Fetch enrichments for stores on this page
   const storeIds = result.stores.map((s) => s.id);
   const enrichments = await getStoreEnrichments(storeIds);
 
-  // Compute stats inline from the result
   const activeCount = result.stores.filter(
     (s) => s.status === "active" || s.status === "verified"
   ).length;
@@ -139,7 +204,6 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
     (s) => s.wpn_level === "premium"
   ).length;
 
-  // Build StoreWithDistance[] for the map — add distance_miles: 0
   const storesWithCoords: StoreWithDistance[] = [];
   const storeLimit = Math.min(result.stores.length, 500);
   for (let i = 0; i < storeLimit; i++) {
@@ -149,11 +213,9 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
     }
   }
 
-  // Use first store with coordinates as map center
   const centerLat = storesWithCoords.length > 0 ? storesWithCoords[0].latitude! : 39.8283;
   const centerLng = storesWithCoords.length > 0 ? storesWithCoords[0].longitude! : -98.5795;
 
-  // Build JSON-LD ItemList of LocalBusiness (first 25 stores)
   const jsonLdLimit = Math.min(result.stores.length, MAX_JSON_LD_ITEMS);
   const itemListElements: Record<string, unknown>[] = [];
   for (let i = 0; i < jsonLdLimit; i++) {
@@ -196,22 +258,8 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
     },
   };
 
-  const breadcrumbItems = [
-    { name: "Home", href: "/" },
-    { name: stateName, href: `/stores/${stateSlug}` },
-    { name: cityName, href: `/stores/${stateSlug}/${citySlug}` },
-  ];
-
   return (
-    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
-      <Breadcrumb items={breadcrumbItems} />
-
-      <div className="mb-6 mt-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight mb-1">
-          Game Stores in {cityName}, {abbrev}
-        </h1>
-      </div>
-
+    <>
       <StatsBar
         storeCount={result.total}
         activeCount={activeCount}
@@ -274,6 +322,6 @@ export default async function CityPage({ params, searchParams }: Readonly<PagePr
       )}
 
       <JsonLd data={jsonLdData} />
-    </div>
+    </>
   );
 }
