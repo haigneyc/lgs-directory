@@ -154,6 +154,10 @@ export async function listStores(
 export const getStore = cache(async (
   id: string
 ): Promise<StoreWithPresences | null> => {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`store:${id}`);
   console.assert(typeof id === "string", "getStore: id must be a string");
   console.assert(id.length > 0, "getStore: id must be non-empty");
 
@@ -184,6 +188,10 @@ export const getStore = cache(async (
 export const getStoreBySlug = cache(async (
   slug: string
 ): Promise<StoreWithPresences | null> => {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`store:slug:${slug}`);
   console.assert(typeof slug === "string", "getStoreBySlug: slug must be a string");
   console.assert(slug.length > 0, "getStoreBySlug: slug must be non-empty");
   console.assert(slug.length <= 200, "getStoreBySlug: slug suspiciously long");
