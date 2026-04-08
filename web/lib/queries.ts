@@ -1,4 +1,8 @@
 import { cache } from "react";
+// Stable Cache Components API as of Next.js 16.2. These used to be
+// exported as `unstable_cacheLife` / `unstable_cacheTag`; the unprefixed
+// names are the supported form now.
+import { cacheLife, cacheTag } from "next/cache";
 import { query } from "./db";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import type {
@@ -57,6 +61,18 @@ interface ListStoresResult {
 export async function listStores(
   params: ListStoresParams
 ): Promise<ListStoresResult> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
+  if (params.state) {
+    cacheTag(`stores:state:${params.state.toUpperCase()}`);
+  }
+  if (params.city) {
+    cacheTag(`stores:city:${(params.state ?? "").toUpperCase()}:${params.city.toUpperCase()}`);
+  }
+  if (params.category) {
+    cacheTag(`category:${params.category}`);
+  }
   const page = params.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -138,6 +154,10 @@ export async function listStores(
 export const getStore = cache(async (
   id: string
 ): Promise<StoreWithPresences | null> => {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`store:${id}`);
   console.assert(typeof id === "string", "getStore: id must be a string");
   console.assert(id.length > 0, "getStore: id must be non-empty");
 
@@ -168,6 +188,10 @@ export const getStore = cache(async (
 export const getStoreBySlug = cache(async (
   slug: string
 ): Promise<StoreWithPresences | null> => {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`store:slug:${slug}`);
   console.assert(typeof slug === "string", "getStoreBySlug: slug must be a string");
   console.assert(slug.length > 0, "getStoreBySlug: slug must be non-empty");
   console.assert(slug.length <= 200, "getStoreBySlug: slug suspiciously long");
@@ -231,6 +255,10 @@ export async function getFilterOptions(): Promise<{
   wpnLevels: string[];
   categories: string[];
 }> {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag("stores");
+  cacheTag("filter-options");
   const [stateRows, statusRows, wpnRows, categoryRows] = await Promise.all([
     query<{ state: string }>(
       `SELECT DISTINCT address->>'state' as state FROM stores
@@ -259,6 +287,10 @@ export async function getFilterOptions(): Promise<{
 }
 
 export async function getStateIndex(): Promise<StateStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag("state-index");
   const rows = await query<{
     state: string;
     store_count: number;
@@ -305,6 +337,10 @@ export async function getStateIndex(): Promise<StateStats[]> {
 }
 
 export async function getCityIndex(stateDbName: string): Promise<CityStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`city-index:${stateDbName.toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getCityIndex: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getCityIndex: stateDbName must not be empty");
 
@@ -359,6 +395,10 @@ export async function getOnlineStores(
   stateDbName: string,
   cityDbName?: string
 ): Promise<OnlineStore[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`online-stores:${stateDbName.toUpperCase()}:${(cityDbName ?? "").toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getOnlineStores: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getOnlineStores: stateDbName must not be empty");
 
@@ -403,6 +443,9 @@ export async function getCityDescription(
   state: string,
   city: string
 ): Promise<string | null> {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag(`city-desc:${state.toUpperCase()}:${city.toUpperCase()}`);
   console.assert(typeof state === "string" && state.length > 0, "getCityDescription: state must be a non-empty string");
   console.assert(typeof city === "string" && city.length > 0, "getCityDescription: city must be a non-empty string");
 
@@ -433,6 +476,10 @@ export async function getNearbyCities(
   cityDbName: string,
   limit = 8
 ): Promise<CityStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`nearby-cities:${stateDbName.toUpperCase()}:${cityDbName.toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getNearbyCities: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getNearbyCities: stateDbName must not be empty");
   console.assert(typeof cityDbName === "string", "getNearbyCities: cityDbName must be a string");
@@ -575,6 +622,10 @@ function parseEnrichmentPayload(
 export async function getStoreEnrichment(
   storeId: string
 ): Promise<StoreEnrichment | null> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("enrichment");
+  cacheTag(`store:${storeId}`);
   console.assert(
     typeof storeId === "string" && storeId.length > 0,
     "getStoreEnrichment: storeId must be a non-empty string"
@@ -607,6 +658,10 @@ export async function getStoreEnrichment(
 export async function getStoreEnrichments(
   storeIds: string[]
 ): Promise<Map<string, StoreEnrichment>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("enrichment");
+  cacheTag("stores");
   console.assert(
     Array.isArray(storeIds),
     "getStoreEnrichments: storeIds must be an array"
@@ -684,6 +739,10 @@ function parseContentPayload(
 export async function getStoreContent(
   storeId: string
 ): Promise<StoreContent | null> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("content");
+  cacheTag(`store:${storeId}`);
   console.assert(
     typeof storeId === "string" && storeId.length > 0,
     "getStoreContent: storeId must be a non-empty string"
@@ -716,6 +775,10 @@ export async function getStoreContent(
 export async function getStoreContents(
   storeIds: string[]
 ): Promise<Map<string, StoreContent>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("content");
+  cacheTag("stores");
   console.assert(
     Array.isArray(storeIds),
     "getStoreContents: storeIds must be an array"
@@ -764,6 +827,10 @@ export async function getStoreContents(
 export async function getStoreCategories(
   storeId: string
 ): Promise<StoreCategory[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("categories");
+  cacheTag(`store:${storeId}`);
   console.assert(
     typeof storeId === "string" && storeId.length > 0,
     "getStoreCategories: storeId must be a non-empty string"
@@ -789,6 +856,13 @@ export async function listStoresByCategory(
   category: string,
   params: { page?: number; state?: string; city?: string }
 ): Promise<ListStoresByCategoryResult> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
+  cacheTag(`category:${category}`);
+  if (params.state) {
+    cacheTag(`stores:state:${params.state.toUpperCase()}`);
+  }
   console.assert(
     typeof category === "string" && category.length > 0,
     "listStoresByCategory: category must be a non-empty string"
@@ -835,6 +909,10 @@ export async function listStoresByCategory(
 export async function getCategoryStats(): Promise<
   { category: string; count: number }[]
 > {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag("stores");
+  cacheTag("categories");
   const rows = await query<{ category: string; count: number }>(
     `SELECT category, count(*)::int as count
      FROM store_categories
@@ -847,6 +925,9 @@ export async function getCategoryStats(): Promise<
 }
 
 export async function getTotalStoreCount(): Promise<number> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
   const rows = await query<{ total: number }>(
     `SELECT count(*)::int as total FROM stores
      WHERE status IN ('active', 'verified', 'candidate')
@@ -861,6 +942,10 @@ export async function getTotalStoreCount(): Promise<number> {
 export async function getPopularCities(
   limit: number = 12
 ): Promise<{ city: string; state: string; store_count: number }[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag("popular-cities");
   console.assert(typeof limit === "number" && limit > 0, "getPopularCities: limit must be positive");
   console.assert(limit <= 100, "getPopularCities: limit must be <= 100");
 
@@ -895,6 +980,10 @@ export async function getPopularCities(
 export async function getTopCityStateSlugs(
   limit: number
 ): Promise<{ city: string; state: string }[]> {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag("stores");
+  cacheTag("top-cities");
   console.assert(typeof limit === "number" && limit > 0, "getTopCityStateSlugs: limit must be positive");
   console.assert(limit <= 500, "getTopCityStateSlugs: limit must be <= 500 (prerender bound)");
 
@@ -927,6 +1016,10 @@ export async function getOtherStoresInCity(
   city: string,
   limit: number = 6
 ): Promise<Store[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`stores:city:${state.toUpperCase()}:${city.toUpperCase()}`);
   console.assert(typeof storeId === "string" && storeId.length > 0, "getOtherStoresInCity: storeId must be non-empty");
   console.assert(typeof state === "string" && state.length > 0, "getOtherStoresInCity: state must be non-empty");
   console.assert(typeof city === "string" && city.length > 0, "getOtherStoresInCity: city must be non-empty");
@@ -956,6 +1049,10 @@ export async function getTopCitiesForCategory(
   category: string,
   limit: number = 10
 ): Promise<{ city: string; state: string; store_count: number }[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`category:${category}`);
   console.assert(typeof category === "string" && category.length > 0, "getTopCitiesForCategory: category must be non-empty");
   console.assert(limit > 0 && limit <= 50, "getTopCitiesForCategory: limit must be 1-50");
 
@@ -993,6 +1090,10 @@ export async function getTopCitiesForCategory(
 export async function getGameTagCounts(): Promise<
   { tag: string; count: number }[]
 > {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag("stores");
+  cacheTag("game-tags");
   try {
     const rows = await query<{ tag: string; count: number }>(
       `SELECT
