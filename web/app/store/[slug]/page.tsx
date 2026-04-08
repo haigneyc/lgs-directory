@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
+import { StoreDetailSkeleton } from "@/components/store-detail-skeleton";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
 import {
@@ -110,7 +112,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function StoreDetailPage({ params }: PageProps) {
+/**
+ * Synchronous shell — MUST NOT await anything (PERF-026/027). The
+ * `params` Promise is forwarded unresolved to the async child so the
+ * outer wrapper can prerender at build time and land in the edge cache.
+ */
+export default function StoreDetailPage({ params }: PageProps) {
+  console.assert(typeof params === "object", "StoreDetailPage: params must be a Promise");
+  return (
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+      <Suspense fallback={<StoreDetailSkeleton />}>
+        <DynamicStoreDetail params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+/**
+ * All data-dependent rendering lives here. Awaits params, resolves the
+ * slug (which may `permanentRedirect` for legacy UUID URLs or
+ * `notFound` for unknown slugs), then fetches enrichment/content/
+ * categories and returns the full store body. The outer shell already
+ * provided the page container, so this fragment renders inside it.
+ */
+async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await resolveSlugParam(slug);
 
@@ -143,7 +168,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
   const hasReviews = hasRating && enrichment?.user_rating_count !== null && enrichment?.user_rating_count !== undefined;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+    <>
       <Breadcrumb
         items={[
           { name: "Home", href: "/" },
@@ -427,7 +452,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
 
       <JsonLd data={buildLocalBusinessJsonLd(store, enrichment, canonicalUrl)} />
       {faqItems.length > 0 && <JsonLd data={buildFaqJsonLd(faqItems)} />}
-    </div>
+    </>
   );
 }
 
