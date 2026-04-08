@@ -84,9 +84,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 5. Store detail pages
-  const storeRows = await query<{ id: string }>(
-    `SELECT id FROM stores ORDER BY id`
+  // 5. Store detail pages -- prefer the human-readable slug URL added
+  // for Vera Rec 3. Rows that have not yet been backfilled fall back to
+  // the legacy UUID URL, which still resolves (via 301) at the same
+  // ``/store/[slug]`` route.
+  const storeRows = await query<{ id: string; slug: string | null }>(
+    `SELECT id, slug FROM stores ORDER BY id`
   );
 
   console.assert(Array.isArray(storeRows), "sitemap: storeRows must be an array");
@@ -95,8 +98,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (let i = 0; i < storeLimit; i++) {
     const row = storeRows[i];
     console.assert(typeof row.id === "string", "sitemap: store id must be a string");
+    const path = row.slug !== null && row.slug.length > 0
+      ? `/store/${row.slug}`
+      : `/store/${row.id}`;
     entries.push({
-      url: `${BASE_URL}/store/${row.id}`,
+      url: `${BASE_URL}${path}`,
       priority: 0.4,
       changeFrequency: "monthly",
     });

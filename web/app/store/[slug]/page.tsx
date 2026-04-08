@@ -1,10 +1,63 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DetailMapLazy } from "@/components/map/detail-map-lazy";
-import { getStore, getStoreEnrichment, getStoreContent, getStoreCategories, getOtherStoresInCity } from "@/lib/queries";
-import { stateToSlug, cityToSlug, abbreviationToStateName } from "@/lib/slugs";
+import {
+  getStore,
+  getStoreBySlug,
+  getStoreEnrichment,
+  getStoreContent,
+  getStoreCategories,
+  getOtherStoresInCity,
+} from "@/lib/queries";
+import {
+  stateToSlug,
+  cityToSlug,
+  abbreviationToStateName,
+  isUuid,
+  storeSlugPath,
+} from "@/lib/slugs";
+import { SITE_URL } from "@/lib/site";
+
+/**
+ * Resolves a ``/store/[slug]`` request param to a store row.
+ *
+ * Two URL shapes are accepted:
+ *
+ * 1. The canonical human-readable slug, e.g. ``darke-depths-gaming-dayton-oh``.
+ *    This is the form Google should index and the form every internal link
+ *    points at after Vera Rec 3.
+ * 2. The legacy UUID, e.g. ``190ec6ae-544c-4804-8f3c-5b2af773bc64``. The
+ *    initial ~3 days of indexed pages used UUID URLs; we MUST keep them
+ *    resolving forever, but we want Google to transfer ranking signal to the
+ *    new slug URL. This function detects the UUID format and 301-redirects
+ *    via ``permanentRedirect`` (Next.js emits HTTP 308, which is a permanent
+ *    redirect that preserves method -- equivalent to a 301 for GET-only crawl
+ *    traffic and accepted by Google as a permanent move).
+ *
+ * Returns the store row if the slug branch matched. Calls
+ * ``permanentRedirect`` (which never returns) for the UUID branch. Calls
+ * ``notFound`` if neither branch matches.
+ */
+async function resolveSlugParam(
+  param: string
+): Promise<Awaited<ReturnType<typeof getStoreBySlug>>> {
+  console.assert(typeof param === "string", "resolveSlugParam: param must be a string");
+  console.assert(param.length > 0, "resolveSlugParam: param must be non-empty");
+
+  if (isUuid(param)) {
+    const legacy = await getStore(param);
+    if (legacy === null || legacy.slug === null) {
+      // Either the UUID is unknown or the row hasn't been backfilled
+      // with a slug yet. In both cases there is nothing to redirect to.
+      notFound();
+    }
+    permanentRedirect(storeSlugPath(legacy.slug));
+  }
+
+  return getStoreBySlug(param);
+}
 import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
@@ -30,35 +83,49 @@ import {
 export const revalidate = 86400;
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  const store = await getStore(id);
+  const { slug } = await params;
 
+  // generateMetadata runs before the page body. We do NOT want to issue
+  // the redirect from here -- Next.js will call the page component next
+  // and `resolveSlugParam` will redirect there. For UUID requests we
+  // simply return a minimal metadata object so the redirect can take
+  // over without paying for an extra DB round-trip.
+  if (isUuid(slug)) {
+    return { title: "Roll For Store" };
+  }
+
+  const store = await getStoreBySlug(slug);
   if (!store) {
     return { title: "Store Not Found | Roll For Store" };
   }
 
+  const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
   return {
     title: `${store.name} | Roll For Store`,
     description: `${store.name} in ${store.address.city}, ${store.address.state}. View hours, online presence, and WPN status.`,
+    alternates: {
+      canonical: canonicalPath,
+    },
   };
 }
 
 export default async function StoreDetailPage({ params }: PageProps) {
-  const { id } = await params;
-  const [store, enrichment, storeContent, categories] = await Promise.all([
-    getStore(id),
-    getStoreEnrichment(id),
-    getStoreContent(id),
-    getStoreCategories(id),
-  ]);
+  const { slug } = await params;
+  const store = await resolveSlugParam(slug);
 
   if (!store) {
     notFound();
   }
+
+  const [enrichment, storeContent, categories] = await Promise.all([
+    getStoreEnrichment(store.id),
+    getStoreContent(store.id),
+    getStoreCategories(store.id),
+  ]);
 
   console.assert(typeof store.name === "string", "StoreDetailPage: store.name must be a string");
   console.assert(typeof store.id === "string", "StoreDetailPage: store.id must be a string");
@@ -70,6 +137,8 @@ export default async function StoreDetailPage({ params }: PageProps) {
   );
   const citySlug = cityToSlug(store.address.city);
   const stateSlugValue = stateToSlug(store.address.state);
+  const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
 
   const faqItems = generateStoreFaq({ store, enrichment, storeContent });
   const rating = enrichment?.rating ?? 0;
@@ -83,7 +152,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
           { name: "Home", href: "/" },
           { name: abbreviationToStateName(store.address.state) ?? store.address.state, href: `/stores/${stateToSlug(store.address.state)}` },
           { name: store.address.city, href: `/stores/${stateToSlug(store.address.state)}/${cityToSlug(store.address.city)}` },
-          { name: store.name, href: `/store/${store.id}` },
+          { name: store.name, href: canonicalPath },
         ]}
       />
 
@@ -359,7 +428,7 @@ export default async function StoreDetailPage({ params }: PageProps) {
         <AmazonShelf shelf={shelfForStoreCategory(categories[0] ?? null)} />
       </div>
 
-      <JsonLd data={buildLocalBusinessJsonLd(store, enrichment)} />
+      <JsonLd data={buildLocalBusinessJsonLd(store, enrichment, canonicalUrl)} />
       {faqItems.length > 0 && <JsonLd data={buildFaqJsonLd(faqItems)} />}
     </div>
   );
@@ -378,26 +447,28 @@ const SCHEMA_DAY_NAMES = [
 
 function buildLocalBusinessJsonLd(
   store: Awaited<ReturnType<typeof getStore>> & object,
-  enrichment: Awaited<ReturnType<typeof getStoreEnrichment>>
+  enrichment: Awaited<ReturnType<typeof getStoreEnrichment>>,
+  canonicalUrl: string
 ): Record<string, unknown> {
   console.assert(store !== null, "buildLocalBusinessJsonLd: store must not be null");
   console.assert(typeof store.name === "string", "buildLocalBusinessJsonLd: store.name must be a string");
+  console.assert(typeof canonicalUrl === "string" && canonicalUrl.length > 0, "buildLocalBusinessJsonLd: canonicalUrl must be non-empty");
 
-  const websitePresence = store.presences.find(
-    (p) => p.channel_type === "website" && p.status === "active"
-  );
+  // PostalAddress sub-schema -- only include fields that exist on the row.
+  const postalAddress: Record<string, unknown> = { "@type": "PostalAddress" };
+  if (store.address.street) postalAddress.streetAddress = store.address.street;
+  if (store.address.city) postalAddress.addressLocality = store.address.city;
+  if (store.address.state) postalAddress.addressRegion = store.address.state;
+  if (store.address.zip_code) postalAddress.postalCode = store.address.zip_code;
+  postalAddress.addressCountry = "US";
 
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
+    "@id": canonicalUrl,
     name: store.name,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: store.address.street,
-      addressLocality: store.address.city,
-      addressRegion: store.address.state,
-      postalCode: store.address.zip_code,
-    },
+    url: canonicalUrl,
+    address: postalAddress,
   };
 
   if (store.phone) {
@@ -412,8 +483,20 @@ function buildLocalBusinessJsonLd(
     };
   }
 
-  if (websitePresence) {
-    data.url = websitePresence.url;
+  // sameAs: include the store's own website + any other active external presences.
+  // This is the recommended schema.org pattern for linking the entity to its
+  // canonical web presences (vs. using `url`, which we reserve for the
+  // canonical store-page URL on rollforstore.com).
+  const sameAs: string[] = [];
+  const presenceLimit = Math.min(store.presences.length, 50);
+  for (let i = 0; i < presenceLimit; i++) {
+    const p = store.presences[i];
+    if (p.status === "active" && typeof p.url === "string" && p.url.length > 0) {
+      sameAs.push(p.url);
+    }
+  }
+  if (sameAs.length > 0) {
+    data.sameAs = sameAs;
   }
 
   // Add OpeningHoursSpecification from periods data

@@ -159,6 +159,37 @@ export const getStore = cache(async (
   return { ...storeRows[0], presences };
 });
 
+/**
+ * Fetch a store by its human-readable slug. Mirrors ``getStore`` but
+ * keys on ``stores.slug`` (added in alembic c5e1a9f4b2d8). Wrapped in
+ * React ``cache()`` so ``generateMetadata`` and the page body share a
+ * single round-trip per request.
+ */
+export const getStoreBySlug = cache(async (
+  slug: string
+): Promise<StoreWithPresences | null> => {
+  console.assert(typeof slug === "string", "getStoreBySlug: slug must be a string");
+  console.assert(slug.length > 0, "getStoreBySlug: slug must be non-empty");
+  console.assert(slug.length <= 200, "getStoreBySlug: slug suspiciously long");
+
+  const storeRows = await query<Store>(
+    "SELECT * FROM stores WHERE slug = $1",
+    [slug]
+  );
+  if (storeRows.length === 0) {
+    return null;
+  }
+
+  const presences = await query<OnlinePresence>(
+    `SELECT * FROM online_presences
+     WHERE store_id = $1
+     ORDER BY channel_type, url`,
+    [storeRows[0].id]
+  );
+
+  return { ...storeRows[0], presences };
+});
+
 export async function getNearbyStores(
   lat: number,
   lng: number,
@@ -349,6 +380,7 @@ export async function getOnlineStores(
   const rows = await query<OnlineStore>(
     `SELECT
        s.id AS store_id,
+       s.slug AS store_slug,
        s.name AS store_name,
        op.url AS presence_url,
        op.channel_type,

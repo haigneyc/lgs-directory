@@ -10,6 +10,7 @@ import {
 import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { formatCityState } from "@/lib/format";
+import { storeHref } from "@/lib/slugs";
 import type { Store, StoreEnrichment } from "@/lib/types";
 import { MapPin, Star } from "lucide-react";
 
@@ -74,7 +75,7 @@ export function StoreTable({ stores, enrichments }: StoreTableProps) {
             <TableRow key={store.id} className="border-zinc-800/40 hover:bg-zinc-800/30 transition-colors">
               <TableCell>
                 <Link
-                  href={`/store/${store.id}`}
+                  href={storeHref(store)}
                   className="font-medium text-zinc-100 hover:text-yellow-500 transition-colors duration-200"
                 >
                   {store.name}

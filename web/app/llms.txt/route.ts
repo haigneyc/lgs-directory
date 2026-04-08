@@ -10,7 +10,7 @@ const LLMS_CONTENT = `# Roll For Store
 ## How to use this data
 - Browse by state: /stores/{state-name}
 - Browse by city: /stores/{state-name}/{city-name}
-- Individual store: /store/{store-uuid}
+- Individual store: /store/{store-slug}  (legacy /store/{store-uuid} URLs 301-redirect to the slug form)
 - Sitemap: /sitemap.xml
 
 ## Data freshness

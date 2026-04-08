@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
 import { formatCityState, formatDistance } from "@/lib/format";
+import { storeHref } from "@/lib/slugs";
 import type { StoreWithDistance } from "@/lib/types";
 
 // Leaflet must be loaded client-side only (requires window)
@@ -312,7 +313,7 @@ export default function NearMePage() {
               {stores.map((store) => (
                 <Link
                   key={store.id}
-                  href={`/store/${store.id}`}
+                  href={storeHref(store)}
                   className="block px-4 py-3 hover:bg-zinc-900/50 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">

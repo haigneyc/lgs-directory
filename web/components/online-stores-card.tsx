@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatPlatform } from "@/lib/format";
+import { storeHref } from "@/lib/slugs";
 import type { OnlineStore } from "@/lib/types";
 
 interface OnlineStoresCardProps {
@@ -41,7 +42,7 @@ export function OnlineStoresCard({ stores }: OnlineStoresCardProps) {
             >
               <div className="min-w-0">
                 <Link
-                  href={`/store/${store.store_id}`}
+                  href={storeHref({ id: store.store_id, slug: store.store_slug })}
                   className="text-sm text-zinc-300 hover:text-white transition-colors truncate block"
                 >
                   {store.store_name}
