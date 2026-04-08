@@ -6,6 +6,8 @@ import { stateToSlug, cityToSlug } from "@/lib/slugs";
 const BASE_URL = SITE_URL;
 const MAX_SITEMAP_ENTRIES = 50000;
 
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   console.assert(typeof BASE_URL === "string", "sitemap: BASE_URL must be a string");
   console.assert(MAX_SITEMAP_ENTRIES > 0, "sitemap: MAX_SITEMAP_ENTRIES must be positive");
