@@ -275,6 +275,10 @@ export async function getFilterOptions(): Promise<{
 }
 
 export async function getStateIndex(): Promise<StateStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag("state-index");
   const rows = await query<{
     state: string;
     store_count: number;
@@ -321,6 +325,10 @@ export async function getStateIndex(): Promise<StateStats[]> {
 }
 
 export async function getCityIndex(stateDbName: string): Promise<CityStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`city-index:${stateDbName.toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getCityIndex: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getCityIndex: stateDbName must not be empty");
 
@@ -375,6 +383,10 @@ export async function getOnlineStores(
   stateDbName: string,
   cityDbName?: string
 ): Promise<OnlineStore[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`online-stores:${stateDbName.toUpperCase()}:${(cityDbName ?? "").toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getOnlineStores: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getOnlineStores: stateDbName must not be empty");
 
@@ -419,6 +431,9 @@ export async function getCityDescription(
   state: string,
   city: string
 ): Promise<string | null> {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag(`city-desc:${state.toUpperCase()}:${city.toUpperCase()}`);
   console.assert(typeof state === "string" && state.length > 0, "getCityDescription: state must be a non-empty string");
   console.assert(typeof city === "string" && city.length > 0, "getCityDescription: city must be a non-empty string");
 
@@ -449,6 +464,10 @@ export async function getNearbyCities(
   cityDbName: string,
   limit = 8
 ): Promise<CityStats[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("stores");
+  cacheTag(`nearby-cities:${stateDbName.toUpperCase()}:${cityDbName.toUpperCase()}`);
   console.assert(typeof stateDbName === "string", "getNearbyCities: stateDbName must be a string");
   console.assert(stateDbName.length > 0, "getNearbyCities: stateDbName must not be empty");
   console.assert(typeof cityDbName === "string", "getNearbyCities: cityDbName must be a string");
