@@ -1,4 +1,8 @@
 import { cache } from "react";
+import {
+  unstable_cacheLife as cacheLife,
+  unstable_cacheTag as cacheTag,
+} from "next/cache";
 import { query } from "./db";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import type {
@@ -57,6 +61,18 @@ interface ListStoresResult {
 export async function listStores(
   params: ListStoresParams
 ): Promise<ListStoresResult> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
+  if (params.state) {
+    cacheTag(`stores:state:${params.state.toUpperCase()}`);
+  }
+  if (params.city) {
+    cacheTag(`stores:city:${(params.state ?? "").toUpperCase()}:${params.city.toUpperCase()}`);
+  }
+  if (params.category) {
+    cacheTag(`category:${params.category}`);
+  }
   const page = params.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -789,6 +805,13 @@ export async function listStoresByCategory(
   category: string,
   params: { page?: number; state?: string; city?: string }
 ): Promise<ListStoresByCategoryResult> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
+  cacheTag(`category:${category}`);
+  if (params.state) {
+    cacheTag(`stores:state:${params.state.toUpperCase()}`);
+  }
   console.assert(
     typeof category === "string" && category.length > 0,
     "listStoresByCategory: category must be a non-empty string"
