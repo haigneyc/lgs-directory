@@ -108,11 +108,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
+  console.assert(canonicalUrl.startsWith("https://"), "generateMetadata: canonicalUrl must be absolute");
   return {
     title: `${store.name} | Roll For Store`,
     description: `${store.name} in ${store.address.city}, ${store.address.state}. View hours, online presence, and WPN status.`,
     alternates: {
-      canonical: canonicalPath,
+      // Emit an absolute canonical URL. Google's docs explicitly
+      // recommend absolute over relative canonicals; relative forms
+      // work in most crawlers but are fragile.
+      canonical: canonicalUrl,
     },
   };
 }
