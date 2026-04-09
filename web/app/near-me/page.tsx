@@ -1,354 +1,236 @@
-"use client";
-
-import { useState, useCallback, useRef } from "react";
-import dynamic from "next/dynamic";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
+import { MapPin } from "lucide-react";
+import NearMeClient from "./near-me-client";
+import { getNearbyStores } from "@/lib/queries";
+import { JsonLd } from "@/components/seo/json-ld";
+import { Breadcrumb } from "@/components/seo/breadcrumb";
+import { SITE_URL } from "@/lib/site";
 import { formatCityState, formatDistance } from "@/lib/format";
 import { storeHref } from "@/lib/slugs";
-import type { StoreWithDistance } from "@/lib/types";
+import { toDisplayCase } from "@/lib/display-case";
 
-// Leaflet must be loaded client-side only (requires window)
-const StoreMap = dynamic(() => import("@/components/map/store-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full rounded-lg bg-zinc-900 flex items-center justify-center">
-      <p className="text-zinc-500">Loading map...</p>
-    </div>
-  ),
-});
+/**
+ * `/near-me` — server-rendered nearest-store list using Vercel's edge
+ * geo headers as the initial coordinates, with a client component that
+ * progressively enhances the UX once the user grants precise browser
+ * geolocation.
+ *
+ * The server shell is per-request dynamic (reads request headers) and
+ * MUST NOT be wrapped in `use cache`. The static chrome prerenders, the
+ * store list streams in via a Suspense boundary.
+ */
 
-type Phase = "idle" | "locating" | "loading" | "done" | "error";
+export const metadata: Metadata = {
+  title: "Game Stores Near Me | Roll For Store",
+  description:
+    "Find local game stores, comic shops, and hobby stores near you. Browse nearest stores by distance with hours, phone, and directions.",
+  alternates: { canonical: `${SITE_URL}/near-me` },
+  openGraph: {
+    title: "Game Stores Near Me | Roll For Store",
+    description:
+      "Find local game stores, comic shops, and hobby stores near you.",
+    type: "website",
+    url: `${SITE_URL}/near-me`,
+    siteName: "Roll For Store",
+  },
+};
 
-interface NominatimResult {
-  lat: string;
-  lon: string;
+// US geographic center — fallback when edge headers are missing (local
+// dev, non-Vercel environments, bots without geo). The list this
+// produces is still useful generic content for crawlers.
+const FALLBACK_LAT = 39.8283;
+const FALLBACK_LNG = -98.5795;
+const DEFAULT_RADIUS_MILES = 50;
+const DEFAULT_LIMIT = 25;
+
+interface InitialGeo {
+  lat: number;
+  lng: number;
+  city: string | null;
+  state: string | null;
+  fromHeaders: boolean;
 }
 
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const NOMINATIM_USER_AGENT = "RollForStore/1.0";
-const MAX_QUERY_LENGTH = 200;
+/**
+ * Safely decode a Vercel geo header. Vercel URL-encodes non-ASCII
+ * values (e.g. "São Paulo" -> "S%C3%A3o%20Paulo"), but a malformed or
+ * corrupted header (e.g. "%GG") would cause `decodeURIComponent` to
+ * throw `URIError: URI malformed` and crash the render. Fall back to
+ * the raw header in that case.
+ */
+function safeDecodeHeader(raw: string | null): string | null {
+  if (raw === null) return null;
+  console.assert(typeof raw === "string", "safeDecodeHeader: raw must be a string or null");
+  console.assert(raw.length < 1000, "safeDecodeHeader: raw length sanity");
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
-async function geocodeLocation(
-  locationQuery: string
-): Promise<{ lat: number; lng: number } | null> {
+async function readInitialGeo(): Promise<InitialGeo> {
+  const h = await headers();
+  const latRaw = h.get("x-vercel-ip-latitude");
+  const lngRaw = h.get("x-vercel-ip-longitude");
+  const cityRaw = h.get("x-vercel-ip-city");
+  const stateRaw = h.get("x-vercel-ip-country-region");
+
+  const lat = latRaw !== null ? Number.parseFloat(latRaw) : NaN;
+  const lng = lngRaw !== null ? Number.parseFloat(lngRaw) : NaN;
+  const hasCoords =
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180;
+
   console.assert(
-    typeof locationQuery === "string",
-    "geocodeLocation: locationQuery must be a string"
+    !hasCoords || (lat >= -90 && lat <= 90),
+    "readInitialGeo: lat out of range"
   );
   console.assert(
-    locationQuery.length > 0 && locationQuery.length <= MAX_QUERY_LENGTH,
-    "geocodeLocation: locationQuery must be between 1 and 200 characters"
+    !hasCoords || (lng >= -180 && lng <= 180),
+    "readInitialGeo: lng out of range"
   );
 
-  const params = new URLSearchParams({
-    q: locationQuery,
-    format: "json",
-    countrycodes: "us",
-    limit: "1",
-  });
-
-  const res = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
-    headers: { "User-Agent": NOMINATIM_USER_AGENT },
-  });
-
-  if (!res.ok) {
-    return null;
-  }
-
-  const data: NominatimResult[] = await res.json();
-
-  console.assert(Array.isArray(data), "geocodeLocation: response must be an array");
-
-  if (data.length === 0) {
-    return null;
-  }
-
-  const lat = parseFloat(data[0].lat);
-  const lng = parseFloat(data[0].lon);
-
-  if (isNaN(lat) || isNaN(lng)) {
-    return null;
-  }
-
-  return { lat, lng };
+  return {
+    lat: hasCoords ? lat : FALLBACK_LAT,
+    lng: hasCoords ? lng : FALLBACK_LNG,
+    city: safeDecodeHeader(cityRaw),
+    state: stateRaw,
+    fromHeaders: hasCoords,
+  };
 }
 
 export default function NearMePage() {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [stores, setStores] = useState<StoreWithDistance[]>([]);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null
+  return (
+    <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+      <Breadcrumb
+        items={[
+          { name: "Home", href: "/" },
+          { name: "Near Me", href: "/near-me" },
+        ]}
+      />
+      <div className="mb-6 mt-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-600/10 text-yellow-500">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">
+            Game Stores Near Me
+          </h1>
+        </div>
+        <p className="text-sm text-zinc-500 max-w-2xl">
+          The nearest local game stores based on your approximate location.
+          Use the search below to refine by city, zip code, or your precise
+          browser location.
+        </p>
+      </div>
+
+      <Suspense fallback={<NearbySkeleton />}>
+        <NearbyStoresList />
+      </Suspense>
+    </div>
   );
-  const [radius, setRadius] = useState("25");
-  const [locationQuery, setLocationQuery] = useState("");
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const locationInputRef = useRef<HTMLInputElement>(null);
+}
 
-  const fetchNearby = useCallback(
-    async (lat: number, lng: number, r: string) => {
-      setPhase("loading");
-      const res = await fetch(
-        `/api/stores/nearby?lat=${lat}&lng=${lng}&radius=${r}&limit=50`
-      );
-      if (!res.ok) {
-        setPhase("error");
-        setErrorMsg("Failed to fetch nearby stores");
-        return;
-      }
-      const data: StoreWithDistance[] = await res.json();
-      setStores(data);
-      setPhase("done");
-    },
-    []
+function NearbySkeleton() {
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6">
+      <p className="text-sm text-zinc-500">Loading nearest stores…</p>
+    </div>
   );
+}
 
-  const handleLocate = useCallback(() => {
-    if (!navigator.geolocation) {
-      setPhase("error");
-      setErrorMsg("Geolocation is not supported by your browser");
-      return;
-    }
+async function NearbyStoresList() {
+  const geo = await readInitialGeo();
+  console.assert(Number.isFinite(geo.lat), "NearbyStoresList: geo.lat must be finite");
+  console.assert(Number.isFinite(geo.lng), "NearbyStoresList: geo.lng must be finite");
 
-    setPhase("locating");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setCoords({ lat, lng });
-        fetchNearby(lat, lng, radius);
-      },
-      (err) => {
-        setPhase("error");
-        setErrorMsg(
-          err.code === 1
-            ? "Location access denied. Please enable location permissions."
-            : "Unable to determine your location"
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10000 }
-    );
-  }, [radius, fetchNearby]);
-
-  const handleLocationSearch = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      const trimmed = locationQuery.trim();
-      if (trimmed.length === 0) {
-        return;
-      }
-
-      console.assert(
-        trimmed.length <= MAX_QUERY_LENGTH,
-        "handleLocationSearch: query must not exceed max length"
-      );
-      console.assert(
-        typeof trimmed === "string",
-        "handleLocationSearch: trimmed must be a string"
-      );
-
-      setIsGeocoding(true);
-      setPhase("loading");
-      setErrorMsg("");
-
-      const result = await geocodeLocation(trimmed);
-
-      if (result === null) {
-        setIsGeocoding(false);
-        setPhase("error");
-        setErrorMsg(
-          "Location not found. Try a different city or zip code."
-        );
-        return;
-      }
-
-      setIsGeocoding(false);
-      setCoords({ lat: result.lat, lng: result.lng });
-      fetchNearby(result.lat, result.lng, radius);
-    },
-    [locationQuery, radius, fetchNearby]
+  const stores = await getNearbyStores(
+    geo.lat,
+    geo.lng,
+    DEFAULT_RADIUS_MILES,
+    DEFAULT_LIMIT
   );
 
-  const handleRadiusChange = useCallback(
-    (r: string | null) => {
-      if (!r) return;
-      setRadius(r);
-      if (coords) {
-        fetchNearby(coords.lat, coords.lng, r);
-      }
-    },
-    [coords, fetchNearby]
-  );
+  console.assert(Array.isArray(stores), "NearbyStoresList: stores must be an array");
+
+  const itemListElements: Record<string, unknown>[] = [];
+  const jsonLdLimit = Math.min(stores.length, DEFAULT_LIMIT);
+  for (let i = 0; i < jsonLdLimit; i++) {
+    const store = stores[i];
+    itemListElements.push({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${SITE_URL}${storeHref(store)}`,
+      name: toDisplayCase(store.name),
+    });
+  }
+  const jsonLdData: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Game Stores Near Me",
+    numberOfItems: itemListElements.length,
+    itemListElement: itemListElements,
+  };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 h-[calc(100vh-3.5rem)]">
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Near Me</h1>
-            <p className="text-sm text-zinc-500">
-              Find local game stores close to your location
-            </p>
-          </div>
-          <Select value={radius} onValueChange={handleRadiusChange}>
-            <SelectTrigger className="w-28 bg-zinc-900 border-zinc-800 text-zinc-300">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800">
-              <SelectItem value="10" className="text-zinc-200">
-                10 miles
-              </SelectItem>
-              <SelectItem value="25" className="text-zinc-200">
-                25 miles
-              </SelectItem>
-              <SelectItem value="50" className="text-zinc-200">
-                50 miles
-              </SelectItem>
-              <SelectItem value="100" className="text-zinc-200">
-                100 miles
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <JsonLd data={jsonLdData} />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <form
-            onSubmit={handleLocationSearch}
-            className="flex flex-1 items-center gap-2"
-          >
-            <Input
-              ref={locationInputRef}
-              type="text"
-              placeholder="Enter city, state or zip code"
-              value={locationQuery}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val.length <= MAX_QUERY_LENGTH) {
-                  setLocationQuery(val);
-                }
-              }}
-              className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-500"
-            />
-            <Button
-              type="submit"
-              disabled={
-                isGeocoding ||
-                phase === "loading" ||
-                locationQuery.trim().length === 0
-              }
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isGeocoding ? "Searching..." : "Search"}
-            </Button>
-          </form>
-
-          <span className="hidden sm:block text-xs text-zinc-600 px-2">
-            or
+      {geo.fromHeaders && geo.city !== null && (
+        <p className="text-xs text-zinc-500 mb-4">
+          Showing stores near{" "}
+          <span className="text-zinc-300">
+            {toDisplayCase(geo.city)}
+            {geo.state !== null ? `, ${geo.state}` : ""}
           </span>
-          <div className="flex items-center justify-center sm:hidden">
-            <span className="text-xs text-zinc-600">&mdash; or &mdash;</span>
-          </div>
-
-          <Button
-            onClick={handleLocate}
-            disabled={phase === "locating" || phase === "loading"}
-            variant="outline"
-            className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
-          >
-            {phase === "locating" ? "Locating..." : "Use My Location"}
-          </Button>
-        </div>
-      </div>
-
-      {phase === "error" && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {errorMsg}
-        </div>
+          . Use your precise location below for a tighter radius.
+        </p>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100%-5rem)]">
-        {/* Map */}
-        <div className="lg:col-span-2 rounded-lg border border-zinc-800 overflow-hidden bg-zinc-900 min-h-[400px]">
-          {phase === "idle" ? (
-            <div className="h-full flex items-center justify-center text-zinc-500">
-              Search by location or use your current position to find nearby stores
-            </div>
-          ) : coords ? (
-            <StoreMap
-              stores={stores}
-              userLat={coords.lat}
-              userLng={coords.lng}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-zinc-500">
-              Determining your location...
-            </div>
-          )}
+      {stores.length === 0 ? (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
+          No stores found within {DEFAULT_RADIUS_MILES} miles. Try searching
+          by city or zip code below.
         </div>
+      ) : (
+        <ul className="divide-y divide-zinc-800 rounded-lg border border-zinc-800 bg-zinc-900/40 mb-8">
+          {stores.map((store) => (
+            <li key={store.id}>
+              <Link
+                href={storeHref(store)}
+                className="flex items-center justify-between px-4 py-3 hover:bg-zinc-900 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-sm text-zinc-100 truncate">
+                    {toDisplayCase(store.name)}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {formatCityState(store.address)}
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-zinc-400 flex-shrink-0">
+                  {formatDistance(store.distance_miles)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
-        {/* Results sidebar */}
-        <div className="overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950">
-          {phase === "done" && stores.length === 0 && (
-            <div className="p-6 text-center text-zinc-500">
-              No stores found within {radius} miles.
-            </div>
-          )}
-          {phase === "done" && stores.length > 0 && (
-            <div className="divide-y divide-zinc-800">
-              <div className="px-4 py-3 text-sm text-zinc-500">
-                {stores.length} store{stores.length !== 1 ? "s" : ""} within{" "}
-                {radius} mi
-              </div>
-              {stores.map((store) => (
-                <Link
-                  key={store.id}
-                  href={storeHref(store)}
-                  className="block px-4 py-3 hover:bg-zinc-900/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm text-zinc-50 truncate">
-                        {store.name}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {formatCityState(store.address)}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="text-xs font-mono text-zinc-400">
-                        {formatDistance(store.distance_miles)}
-                      </span>
-                      <div className="flex gap-1">
-                        <StoreStatusBadge status={store.status} />
-                        <WpnBadge level={store.wpn_level} />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-          {(phase === "idle" || phase === "locating" || phase === "loading") &&
-            stores.length === 0 && (
-              <div className="p-6 text-center text-zinc-600 text-sm">
-                {phase === "idle"
-                  ? "Results will appear here"
-                  : "Searching..."}
-              </div>
-            )}
-        </div>
-      </div>
-    </div>
+      <NearMeClient
+        initialLat={geo.fromHeaders ? geo.lat : null}
+        initialLng={geo.fromHeaders ? geo.lng : null}
+        initialCity={geo.city}
+        initialState={geo.state}
+      />
+    </>
   );
 }
