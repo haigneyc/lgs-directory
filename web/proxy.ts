@@ -122,11 +122,14 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   }
   console.assert(slug.length > 0, "proxy: resolved slug must be non-empty");
 
-  // Build the redirect URL relative to the current request so that
-  // host, protocol, and any forwarding headers are preserved across
-  // preview/production deployments.
-  const redirectUrl = new URL(`/store/${slug}`, request.url);
-  return NextResponse.redirect(redirectUrl, 308);
+  // Build the redirect URL by cloning request.nextUrl and mutating
+  // only the pathname. Cloning preserves host, protocol, AND search
+  // params automatically — the prior `new URL(path, base)` form was
+  // dropping query strings on the redirect, which silently broke UTM
+  // attribution on UUID-tagged share links (caught by Petra QA).
+  const dest = request.nextUrl.clone();
+  dest.pathname = `/store/${slug}`;
+  return NextResponse.redirect(dest, 308);
 }
 
 /**
