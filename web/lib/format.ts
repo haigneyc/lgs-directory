@@ -1,4 +1,5 @@
 import type { StoreAddress, Platform } from "./types";
+import { toDisplayCase } from "./display-case";
 
 const PRODUCT_LABELS: Record<string, string> = {
   mtg: "Magic: The Gathering",
@@ -24,11 +25,15 @@ export function formatProduct(key: string): string {
 }
 
 export function formatAddress(addr: StoreAddress): string {
-  return `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip_code}`;
+  console.assert(typeof addr === "object" && addr !== null, "formatAddress: addr required");
+  console.assert(typeof addr.city === "string", "formatAddress: addr.city must be a string");
+  return `${toDisplayCase(addr.street)}, ${toDisplayCase(addr.city)}, ${addr.state} ${addr.zip_code}`;
 }
 
 export function formatCityState(addr: StoreAddress): string {
-  return `${addr.city}, ${addr.state}`;
+  console.assert(typeof addr === "object" && addr !== null, "formatCityState: addr required");
+  console.assert(typeof addr.city === "string", "formatCityState: addr.city must be a string");
+  return `${toDisplayCase(addr.city)}, ${addr.state}`;
 }
 
 export function formatPlatform(p: Platform): string {

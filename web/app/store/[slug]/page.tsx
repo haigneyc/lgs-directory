@@ -106,6 +106,7 @@ import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/stat
 import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
 import { formatAddress, formatDate, formatProduct, formatCategory } from "@/lib/format";
+import { toDisplayCase } from "@/lib/display-case";
 import { OtherCityStores } from "@/components/other-city-stores";
 import { StoreFaq } from "@/components/seo/store-faq";
 import { generateStoreFaq, buildFaqJsonLd } from "@/lib/faq";
@@ -294,8 +295,8 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
         items={[
           { name: "Home", href: "/" },
           { name: abbreviationToStateName(store.address.state) ?? store.address.state, href: `/stores/${stateToSlug(store.address.state)}` },
-          { name: store.address.city, href: `/stores/${stateToSlug(store.address.state)}/${cityToSlug(store.address.city)}` },
-          { name: store.name, href: canonicalPath },
+          { name: toDisplayCase(store.address.city), href: `/stores/${stateToSlug(store.address.state)}/${cityToSlug(store.address.city)}` },
+          { name: toDisplayCase(store.name), href: canonicalPath },
         ]}
       />
 
@@ -304,7 +305,7 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-3xl font-bold tracking-tight mb-2">
-              {store.name}
+              {toDisplayCase(store.name)}
             </h1>
 
             {/* Rating */}

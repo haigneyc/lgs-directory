@@ -17,6 +17,7 @@
  */
 
 import type { StoreCategory } from "./types";
+import { toDisplayCase } from "./display-case";
 
 /**
  * Google desktop snippet typically truncates around 155-160 characters.
@@ -226,10 +227,13 @@ export function buildStoreMetaDescription(input: DescriptionInput): string {
     "buildStoreMetaDescription: state required"
   );
 
-  const nameHasCity = norm(input.name).includes(norm(input.city));
+  const name = toDisplayCase(input.name);
+  const city = toDisplayCase(input.city);
+
+  const nameHasCity = norm(name).includes(norm(city));
   const prefix = nameHasCity
-    ? `${input.name}, ${input.state}`
-    : `${input.name} in ${input.city}, ${input.state}`;
+    ? `${name}, ${input.state}`
+    : `${name} in ${city}, ${input.state}`;
 
   const phrase = descriptiveCategoryPhrase(input.categories);
   const hoursClause = summarizeHours(input.weekdayText);
@@ -285,19 +289,21 @@ export function buildStoreTitle(input: TitleInput): string {
     "buildStoreTitle: state required"
   );
 
+  const name = toDisplayCase(input.name);
+  const city = toDisplayCase(input.city);
   const label = primaryCategoryLabel(input.categories);
-  const nameHasCity = norm(input.name).includes(norm(input.city));
+  const nameHasCity = norm(name).includes(norm(city));
 
   const full = nameHasCity
-    ? `${input.name} — ${label} store in ${input.state}`
-    : `${input.name} — ${label} store in ${input.city}, ${input.state}`;
+    ? `${name} — ${label} store in ${input.state}`
+    : `${name} — ${label} store in ${city}, ${input.state}`;
 
   if (full.length <= META_TITLE_MAX) {
     return full;
   }
 
   // Try the compact form (drop city) even if name doesn't contain it.
-  const compact = `${input.name} — ${label} store in ${input.state}`;
+  const compact = `${name} — ${label} store in ${input.state}`;
   if (compact.length <= META_TITLE_MAX) {
     return compact;
   }
@@ -306,7 +312,7 @@ export function buildStoreTitle(input: TitleInput): string {
   const suffix = ` — ${label} store`;
   const room = META_TITLE_MAX - suffix.length - 1;
   if (room <= 1) {
-    return input.name.slice(0, META_TITLE_MAX);
+    return name.slice(0, META_TITLE_MAX);
   }
-  return `${input.name.slice(0, room).trimEnd()}…${suffix}`;
+  return `${name.slice(0, room).trimEnd()}…${suffix}`;
 }
