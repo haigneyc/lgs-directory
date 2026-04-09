@@ -1,8 +1,41 @@
-const LLMS_CONTENT = `# Roll For Store
+import { cacheLife } from "next/cache";
+import { getTotalStoreCount } from "@/lib/queries";
+
+/**
+ * Round a live store count down to the nearest 100 so the published
+ * llms.txt copy ages gracefully between data refreshes. Petra QA
+ * (2026-04-08) caught the static "5,500+" string while the sitemap had
+ * 6,117 real URLs — making this dynamic prevents that drift.
+ */
+function roundDownToHundred(count: number): number {
+  console.assert(Number.isFinite(count), "roundDownToHundred: count must be finite");
+  console.assert(count >= 0, "roundDownToHundred: count must be non-negative");
+  return Math.floor(count / 100) * 100;
+}
+
+async function buildLlmsBody(): Promise<string> {
+  "use cache";
+  // Cache Components-compatible cache directive. The store count only
+  // changes a few times a day via the seeder, so a per-request DB hit
+  // here is pure waste (Rex concern 7, 2026-04-08). The cache
+  // directive must wrap a plain-value return (string), not a
+  // `Response` — `Response` is not a serialisable cache payload.
+  cacheLife("hours");
+  const storeCount = await getTotalStoreCount();
+  console.assert(Number.isInteger(storeCount), "buildLlmsBody: storeCount must be an integer");
+  console.assert(storeCount >= 0, "buildLlmsBody: storeCount must be non-negative");
+  return buildLlmsContent(storeCount);
+}
+
+function buildLlmsContent(storeCount: number): string {
+  console.assert(Number.isInteger(storeCount), "buildLlmsContent: storeCount must be an integer");
+  console.assert(storeCount >= 0, "buildLlmsContent: storeCount must be non-negative");
+  const rounded = roundDownToHundred(storeCount);
+  return `# Roll For Store
 > A comprehensive directory of local game stores in the United States.
 
 ## What this site contains
-- 5,500+ local game stores across all 50 US states
+- ${rounded.toLocaleString()}+ local game stores across all 50 US states
 - Store details: name, address, phone, WPN authorization status
 - Online presence: website URLs, e-commerce platforms, MTG singles availability
 - Location data: latitude/longitude coordinates for mapping
@@ -17,12 +50,13 @@ const LLMS_CONTENT = `# Roll For Store
 - Store data validated every 12 hours via automated pipeline
 - Sources: WPN Store Locator, Google Places API
 `;
+}
 
-export function GET(): Response {
-  console.assert(typeof LLMS_CONTENT === "string", "GET: LLMS_CONTENT must be a string");
-  console.assert(LLMS_CONTENT.length > 0, "GET: LLMS_CONTENT must not be empty");
+export async function GET(): Promise<Response> {
+  const body = await buildLlmsBody();
+  console.assert(body.length > 0, "GET: body must not be empty");
 
-  return new Response(LLMS_CONTENT, {
+  return new Response(body, {
     status: 200,
     headers: {
       "Content-Type": "text/plain",

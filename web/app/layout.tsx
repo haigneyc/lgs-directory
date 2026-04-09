@@ -26,16 +26,41 @@ const bodyFont = DM_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+/**
+ * Site-wide title shown on the homepage and used as the suffix template
+ * for inner pages (Petra QA 2026-04-08: bare "Roll For Store" was too thin
+ * for ranking on the homepage).
+ */
+// Keep under ~60 chars so Google's SERP doesn't truncate the title.
+// Rex review 2026-04-08 flagged the previous 65-char string.
+const SITE_TITLE =
+  "Roll For Store — Local Game, Comic & Warhammer Stores";
+const SITE_DESCRIPTION =
+  "Find local game stores, comic shops, retro video game stores, and Warhammer hobby shops near you across the US.";
+
 export const metadata: Metadata = {
-  title: "Roll For Store",
-  description:
-    "Find local game stores, comic shops, retro video game stores, and Warhammer hobby shops near you across the US.",
+  // metadataBase makes relative og:image / twitter:image paths resolve to
+  // the canonical www host. Without it, Next.js prints a build warning
+  // and falls back to localhost in dev (Petra QA 2026-04-08).
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: "%s | Roll For Store",
+  },
+  description: SITE_DESCRIPTION,
   openGraph: {
-    title: "Roll For Store",
-    description:
-      "Find local game stores, comic shops, retro video game stores, and Warhammer hobby shops near you across the US.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
     url: SITE_URL,
+    siteName: "Roll For Store",
+  },
+  twitter: {
+    // summary_large_image upgrades link previews from a small thumbnail
+    // to a full-width hero card on Twitter/X (Petra QA 2026-04-08).
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
