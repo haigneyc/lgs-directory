@@ -45,3 +45,8 @@ data/
 .superpowers/
 web/.next/
 web/node_modules/
+
+# Lighthouse CI artifacts
+web/.lighthouseci/
+# Lighthouse CI misresolves $LIGHTHOUSE_DATA_DIR on WSL, dumping escaped Windows paths
+web/\\*
