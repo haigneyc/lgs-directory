@@ -23,8 +23,15 @@ const PAGE_SIZE = 25;
 
 /**
  * SQL fragment that filters out unverified candidate stores.
- * Candidate stores are hidden unless they have a trusted external ref
- * (WPN registration or content scraper that found game products).
+ * Candidate stores are hidden unless they qualify via at least one of
+ * three trust signals:
+ *   1. WPN registration (`wpn_id IS NOT NULL`)
+ *   2. Content scraper found game products (`store_external_refs` row
+ *      with `provider = 'website_content'` and a non-empty products array)
+ *   3. Games Workshop official store locator hit (`store_external_refs`
+ *      row with `provider = 'games_workshop'`) — added 2026-04-09 to
+ *      unblock small states like Hawaii where GW locator data is the
+ *      only corroborating signal.
  * This prevents low-quality Google Places-only candidates from appearing.
  */
 const TRUSTED_CANDIDATE_FILTER = `
@@ -35,6 +42,10 @@ const TRUSTED_CANDIDATE_FILTER = `
       SELECT store_id FROM store_external_refs
       WHERE provider = 'website_content'
         AND jsonb_array_length(COALESCE(payload->'products', '[]'::jsonb)) > 0
+    )
+    AND id NOT IN (
+      SELECT store_id FROM store_external_refs
+      WHERE provider = 'games_workshop'
     )
   )
 `;
