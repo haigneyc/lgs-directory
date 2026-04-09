@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { notFound, redirect, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { StoreDetailSkeleton } from "@/components/store-detail-skeleton";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -13,6 +13,138 @@ import {
   getStoreCategories,
   getOtherStoresInCity,
 } from "@/lib/queries";
+import type { StoreWithPresences, StoreEnrichment } from "@/lib/types";
+
+/**
+ * Maximum length of the rendered meta description. Google typically
+ * truncates snippets around 155-160 characters on desktop SERPs; we
+ * clamp to 155 to leave a small safety margin and avoid mid-word cuts.
+ */
+const META_DESCRIPTION_MAX = 155;
+
+/**
+ * Decide whether a store listing has enough substance to be worth
+ * indexing. Per Vera's v2 SEO brief (2026-04-08): a store is THIN when
+ * it has no phone, no hours, no website, AND no other online presences.
+ * Any single populated field flips it back to indexable. The rule runs
+ * at render time so enrichment and presence additions automatically
+ * re-qualify the page without a manual curation step.
+ */
+function isThinStorePage(
+  store: StoreWithPresences,
+  enrichment: StoreEnrichment | null
+): boolean {
+  console.assert(store !== null && typeof store === "object", "isThinStorePage: store must be an object");
+  console.assert(Array.isArray(store.presences), "isThinStorePage: store.presences must be an array");
+
+  const hasPhone = typeof store.phone === "string" && store.phone.length > 0;
+  const weekdayText = enrichment?.hours_weekday_text;
+  const hoursPeriods = enrichment?.hours_periods;
+  const hasHours =
+    (Array.isArray(weekdayText) && weekdayText.length > 0) ||
+    (Array.isArray(hoursPeriods) && hoursPeriods.length > 0);
+  // Only ACTIVE presences count as signal. A store whose only presence
+  // is a stale (unreachable/dead) Facebook entry must not escape noindex.
+  // This matches the predicate used by buildLocalBusinessJsonLd for
+  // sameAs emission, so indexability and structured data agree.
+  let hasActivePresence = false;
+  const presenceLimit = Math.min(store.presences.length, 50);
+  for (let i = 0; i < presenceLimit; i++) {
+    if (store.presences[i].status === "active") {
+      hasActivePresence = true;
+      break;
+    }
+  }
+
+  return !hasPhone && !hasHours && !hasActivePresence;
+}
+
+/**
+ * Channels where ``sells_mtg_singles === true`` means the user can
+ * actually browse inventory. Social/community channels are excluded:
+ * even if a Facebook page posts about singles, it isn't a shoppable
+ * inventory surface, and promising "browse their online MTG singles
+ * inventory" on that basis produces the dishonest-snippet failure mode
+ * Vera's v2 brief is fighting.
+ *
+ * - ``website``: store's own storefront (Shopify, Crystal Commerce, etc.)
+ * - ``tcgplayer``: TCGplayer seller page -- real, browsable inventory
+ * - ``ebay``: eBay store -- real, browsable inventory
+ */
+const SHOPPABLE_CHANNELS: ReadonlySet<string> = new Set([
+  "website",
+  "tcgplayer",
+  "ebay",
+]);
+
+/**
+ * Build the per-store meta description. Conditional on the data the
+ * page actually has -- we never promise hours/phone/website when the
+ * page lacks them, since Google users correctly infer emptiness from
+ * dishonest snippets and click through to Maps results instead. The
+ * output is clamped to META_DESCRIPTION_MAX characters.
+ */
+function buildStoreDescription(
+  store: StoreWithPresences,
+  enrichment: StoreEnrichment | null
+): string {
+  console.assert(typeof store.name === "string" && store.name.length > 0, "buildStoreDescription: store.name required");
+  console.assert(typeof store.address.city === "string", "buildStoreDescription: city required");
+  console.assert(typeof store.address.state === "string", "buildStoreDescription: state required");
+
+  const hasPhone = typeof store.phone === "string" && store.phone.length > 0;
+  const weekdayText = enrichment?.hours_weekday_text;
+  const hoursPeriods = enrichment?.hours_periods;
+  const hasHours =
+    (Array.isArray(weekdayText) && weekdayText.length > 0) ||
+    (Array.isArray(hoursPeriods) && hoursPeriods.length > 0);
+
+  let hasWebsite = false;
+  let hasOnlineSales = false;
+  const presenceLimit = Math.min(store.presences.length, 50);
+  for (let i = 0; i < presenceLimit; i++) {
+    const p = store.presences[i];
+    // Per Rex B1: only ACTIVE presences are signal. Stale rows must not
+    // influence either the website fact or the shoppable-inventory copy.
+    if (p.status !== "active") {
+      continue;
+    }
+    if (p.channel_type === "website") {
+      hasWebsite = true;
+    }
+    // Per Rex B2: "browse their online MTG singles inventory" copy is
+    // gated on a shoppable channel type. A Facebook page flagged
+    // sells_mtg_singles=true is not browsable inventory and must fall
+    // through to the facts-based tail.
+    if (p.sells_mtg_singles === true && SHOPPABLE_CHANNELS.has(p.channel_type)) {
+      hasOnlineSales = true;
+    }
+  }
+
+  const facts: string[] = [];
+  if (hasPhone) facts.push("phone");
+  if (hasHours) facts.push("hours");
+  if (hasWebsite) facts.push("website");
+
+  const base = `${store.name} — game store in ${store.address.city}, ${store.address.state}.`;
+
+  let tail: string;
+  if (hasOnlineSales) {
+    tail = " Browse their online MTG singles inventory and local details.";
+  } else if (facts.length >= 2) {
+    tail = ` See ${facts.slice(0, 2).join(" and ")}, address, and nearby stores.`;
+  } else if (facts.length === 1) {
+    tail = ` See ${facts[0]}, address, and nearby stores.`;
+  } else {
+    tail = " Location and nearby stores on Roll For Store.";
+  }
+
+  const combined = `${base}${tail}`;
+  if (combined.length <= META_DESCRIPTION_MAX) {
+    return combined;
+  }
+  return `${combined.slice(0, META_DESCRIPTION_MAX - 1).trimEnd()}…`;
+}
 import {
   stateToSlug,
   cityToSlug,
@@ -110,14 +242,52 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
   console.assert(canonicalUrl.startsWith("https://"), "generateMetadata: canonicalUrl must be absolute");
+
+  // Fetch enrichment here so the thin-page rule and description copy
+  // can inspect hours. Both queries are wrapped in Next.js `use cache`
+  // and React `cache()`, so this does not add a round-trip at render
+  // time -- the page body call hits the same cached result.
+  const enrichment = await getStoreEnrichment(store.id);
+
+  const title = `${store.name} | Roll For Store`;
+  const description = buildStoreDescription(store, enrichment);
+  console.assert(description.length <= META_DESCRIPTION_MAX, "generateMetadata: description exceeds max length");
+
+  const thin = isThinStorePage(store, enrichment);
+
   return {
-    title: `${store.name} | Roll For Store`,
-    description: `${store.name} in ${store.address.city}, ${store.address.state}. View hours, online presence, and WPN status.`,
+    title,
+    description,
     alternates: {
       // Emit an absolute canonical URL. Google's docs explicitly
       // recommend absolute over relative canonicals; relative forms
       // work in most crawlers but are fragile.
       canonical: canonicalUrl,
+    },
+    // Noindex thin pages at render time (Vera v2 action 1). `follow`
+    // keeps link equity flowing to parent city/state pages. As soon as
+    // any qualifying field (phone, hours, or any presence) is
+    // populated, the page automatically becomes indexable again.
+    robots: thin
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
+    // Explicit per-store Open Graph overrides. The root layout sets
+    // site-wide OG defaults; without declaring `openGraph` here the
+    // store page inherits them verbatim (Dash audit 2026-04-08
+    // confirmed every store page was serving the generic fallback).
+    // Declaring title/description/url/type inside `openGraph` is the
+    // supported Next.js App Router override pattern.
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: canonicalUrl,
+      siteName: "Roll For Store",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
     },
   };
 }

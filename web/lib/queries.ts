@@ -619,9 +619,9 @@ function parseEnrichmentPayload(
   return enrichment;
 }
 
-export async function getStoreEnrichment(
+export const getStoreEnrichment = cache(async (
   storeId: string
-): Promise<StoreEnrichment | null> {
+): Promise<StoreEnrichment | null> => {
   "use cache";
   cacheLife("days");
   cacheTag("enrichment");
@@ -653,7 +653,7 @@ export async function getStoreEnrichment(
     // Table may not have data yet -- degrade gracefully
     return null;
   }
-}
+});
 
 export async function getStoreEnrichments(
   storeIds: string[]
