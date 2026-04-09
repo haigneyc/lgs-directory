@@ -14,13 +14,12 @@ import {
   getOtherStoresInCity,
 } from "@/lib/queries";
 import type { StoreWithPresences, StoreEnrichment } from "@/lib/types";
-
-/**
- * Maximum length of the rendered meta description. Google typically
- * truncates snippets around 155-160 characters on desktop SERPs; we
- * clamp to 155 to leave a small safety margin and avoid mid-word cuts.
- */
-const META_DESCRIPTION_MAX = 155;
+import {
+  buildStoreMetaDescription,
+  buildStoreTitle,
+  META_DESCRIPTION_MAX,
+  META_TITLE_MAX,
+} from "@/lib/store-metadata";
 
 /**
  * Decide whether a store listing has enough substance to be worth
@@ -59,92 +58,6 @@ function isThinStorePage(
   return !hasPhone && !hasHours && !hasActivePresence;
 }
 
-/**
- * Channels where ``sells_mtg_singles === true`` means the user can
- * actually browse inventory. Social/community channels are excluded:
- * even if a Facebook page posts about singles, it isn't a shoppable
- * inventory surface, and promising "browse their online MTG singles
- * inventory" on that basis produces the dishonest-snippet failure mode
- * Vera's v2 brief is fighting.
- *
- * - ``website``: store's own storefront (Shopify, Crystal Commerce, etc.)
- * - ``tcgplayer``: TCGplayer seller page -- real, browsable inventory
- * - ``ebay``: eBay store -- real, browsable inventory
- */
-const SHOPPABLE_CHANNELS: ReadonlySet<string> = new Set([
-  "website",
-  "tcgplayer",
-  "ebay",
-]);
-
-/**
- * Build the per-store meta description. Conditional on the data the
- * page actually has -- we never promise hours/phone/website when the
- * page lacks them, since Google users correctly infer emptiness from
- * dishonest snippets and click through to Maps results instead. The
- * output is clamped to META_DESCRIPTION_MAX characters.
- */
-function buildStoreDescription(
-  store: StoreWithPresences,
-  enrichment: StoreEnrichment | null
-): string {
-  console.assert(typeof store.name === "string" && store.name.length > 0, "buildStoreDescription: store.name required");
-  console.assert(typeof store.address.city === "string", "buildStoreDescription: city required");
-  console.assert(typeof store.address.state === "string", "buildStoreDescription: state required");
-
-  const hasPhone = typeof store.phone === "string" && store.phone.length > 0;
-  const weekdayText = enrichment?.hours_weekday_text;
-  const hoursPeriods = enrichment?.hours_periods;
-  const hasHours =
-    (Array.isArray(weekdayText) && weekdayText.length > 0) ||
-    (Array.isArray(hoursPeriods) && hoursPeriods.length > 0);
-
-  let hasWebsite = false;
-  let hasOnlineSales = false;
-  const presenceLimit = Math.min(store.presences.length, 50);
-  for (let i = 0; i < presenceLimit; i++) {
-    const p = store.presences[i];
-    // Per Rex B1: only ACTIVE presences are signal. Stale rows must not
-    // influence either the website fact or the shoppable-inventory copy.
-    if (p.status !== "active") {
-      continue;
-    }
-    if (p.channel_type === "website") {
-      hasWebsite = true;
-    }
-    // Per Rex B2: "browse their online MTG singles inventory" copy is
-    // gated on a shoppable channel type. A Facebook page flagged
-    // sells_mtg_singles=true is not browsable inventory and must fall
-    // through to the facts-based tail.
-    if (p.sells_mtg_singles === true && SHOPPABLE_CHANNELS.has(p.channel_type)) {
-      hasOnlineSales = true;
-    }
-  }
-
-  const facts: string[] = [];
-  if (hasPhone) facts.push("phone");
-  if (hasHours) facts.push("hours");
-  if (hasWebsite) facts.push("website");
-
-  const base = `${store.name} — game store in ${store.address.city}, ${store.address.state}.`;
-
-  let tail: string;
-  if (hasOnlineSales) {
-    tail = " Browse their online MTG singles inventory and local details.";
-  } else if (facts.length >= 2) {
-    tail = ` See ${facts.slice(0, 2).join(" and ")}, address, and nearby stores.`;
-  } else if (facts.length === 1) {
-    tail = ` See ${facts[0]}, address, and nearby stores.`;
-  } else {
-    tail = " Location and nearby stores on Roll For Store.";
-  }
-
-  const combined = `${base}${tail}`;
-  if (combined.length <= META_DESCRIPTION_MAX) {
-    return combined;
-  }
-  return `${combined.slice(0, META_DESCRIPTION_MAX - 1).trimEnd()}…`;
-}
 import {
   stateToSlug,
   cityToSlug,
@@ -239,20 +152,43 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
   console.assert(canonicalUrl.startsWith("https://"), "generateMetadata: canonicalUrl must be absolute");
 
-  // Fetch enrichment here so the thin-page rule and description copy
-  // can inspect hours. Both queries are wrapped in Next.js `use cache`
-  // and React `cache()`, so this does not add a round-trip at render
-  // time -- the page body call hits the same cached result.
-  const enrichment = await getStoreEnrichment(store.id);
+  // Fetch enrichment + categories + content here so description copy
+  // can inspect hours, primary category, and events. All three queries
+  // are wrapped in Next.js `use cache`, so this does not add a
+  // round-trip at render time -- the page body call hits the same
+  // cached result.
+  const [enrichment, categories, storeContent] = await Promise.all([
+    getStoreEnrichment(store.id),
+    getStoreCategories(store.id),
+    getStoreContent(store.id),
+  ]);
 
-  const title = `${store.name} | Roll For Store`;
-  const description = buildStoreDescription(store, enrichment);
+  const title = buildStoreTitle({
+    name: store.name,
+    city: store.address.city,
+    state: store.address.state,
+    categories,
+  });
+  console.assert(title.length <= META_TITLE_MAX, "generateMetadata: title exceeds max length");
+
+  const description = buildStoreMetaDescription({
+    name: store.name,
+    city: store.address.city,
+    state: store.address.state,
+    categories,
+    weekdayText: enrichment?.hours_weekday_text ?? null,
+    hasEvents: storeContent?.has_events === true,
+  });
   console.assert(description.length <= META_DESCRIPTION_MAX, "generateMetadata: description exceeds max length");
 
   const thin = isThinStorePage(store, enrichment);
 
   return {
-    title,
+    // Use `absolute` so the root layout's "%s | Roll For Store" template
+    // does NOT append to our already-complete per-store title. The
+    // layout template would otherwise push the title past the 60-char
+    // SERP truncation limit the builder was sized to respect.
+    title: { absolute: title },
     description,
     alternates: {
       // Emit an absolute canonical URL. Google's docs explicitly
