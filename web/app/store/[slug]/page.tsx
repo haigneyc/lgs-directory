@@ -291,7 +291,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 /**
  * Synchronous shell — MUST NOT await anything (PERF-026/027). The
  * `params` Promise is forwarded unresolved to the async child so the
- * outer wrapper can prerender at build time and land in the edge cache.
+ * outer wrapper can prerender at build time and land in the edge
+ * cache.
+ *
+ * The real HTTP 404 for unknown slugs is emitted by `web/proxy.ts`
+ * BEFORE this handler runs — Cache Components prerenders the shell
+ * with status 200 and `notFound()` from a Suspense child cannot
+ * retroactively flip the status code. The proxy owns that response
+ * (Petra QA + Rex review 2026-04-08). An earlier approach using
+ * `generateStaticParams` + `dynamicParams = false` was abandoned
+ * because it required a full deploy to reach new stores.
  */
 export default function StoreDetailPage({ params }: PageProps) {
   console.assert(typeof params === "object", "StoreDetailPage: params must be a Promise");
