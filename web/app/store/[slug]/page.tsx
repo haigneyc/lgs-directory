@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
 import { StoreDetailSkeleton } from "@/components/store-detail-skeleton";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -157,22 +157,22 @@ import { SITE_URL } from "@/lib/site";
 /**
  * Resolves a ``/store/[slug]`` request param to a store row.
  *
- * Two URL shapes are accepted:
+ * Two URL shapes can reach this function:
  *
  * 1. The canonical human-readable slug, e.g. ``darke-depths-gaming-dayton-oh``.
- *    This is the form Google should index and the form every internal link
- *    points at after Vera Rec 3.
- * 2. The legacy UUID, e.g. ``190ec6ae-544c-4804-8f3c-5b2af773bc64``. The
- *    initial ~3 days of indexed pages used UUID URLs; we MUST keep them
- *    resolving forever, but we want Google to transfer ranking signal to the
- *    new slug URL. This function detects the UUID format and 301-redirects
- *    via ``permanentRedirect`` (Next.js emits HTTP 308, which is a permanent
- *    redirect that preserves method -- equivalent to a 301 for GET-only crawl
- *    traffic and accepted by Google as a permanent move).
+ *    This is the common case and what Google indexes post-Vera Rec 3.
+ * 2. A legacy ``/store/<uuid>`` URL for one of the ~13 rows that still
+ *    have ``slug IS NULL`` — the proxy layer (``web/proxy.ts``) 308s
+ *    every UUID URL whose row has a slug, so any UUID that makes it
+ *    here is guaranteed to be a slug-less store that we still want to
+ *    serve at the UUID path until the backfill completes.
  *
- * Returns the store row if the slug branch matched. Calls
- * ``permanentRedirect`` (which never returns) for the UUID branch. Calls
- * ``notFound`` if neither branch matches.
+ * UUIDs for rows WITH a slug never reach this function: the proxy
+ * intercepts them before the route handler runs, emitting a real
+ * HTTP 308 before streaming begins. The in-page ``permanentRedirect``
+ * fallback that used to live here was dead code under Suspense — it
+ * fired after the response status was locked at 200, so Googlebot saw
+ * a soft 200 instead of a redirect (Petra bug, 2026-04-08).
  */
 async function resolveSlugParam(
   param: string
@@ -180,14 +180,11 @@ async function resolveSlugParam(
   console.assert(typeof param === "string", "resolveSlugParam: param must be a string");
   console.assert(param.length > 0, "resolveSlugParam: param must be non-empty");
 
+  // Legacy UUID path: only reached for rows where the proxy could not
+  // resolve the UUID to a slug (null slug or unknown id). Fetch the
+  // row directly so the existing UUID URL still renders a real page.
   if (isUuid(param)) {
-    const legacy = await getStore(param);
-    if (legacy === null || legacy.slug === null) {
-      // Either the UUID is unknown or the row hasn't been backfilled
-      // with a slug yet. In both cases there is nothing to redirect to.
-      notFound();
-    }
-    permanentRedirect(storeSlugPath(legacy.slug));
+    return getStore(param);
   }
 
   return getStoreBySlug(param);
@@ -220,16 +217,15 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  // generateMetadata runs before the page body. We do NOT want to issue
-  // the redirect from here -- Next.js will call the page component next
-  // and `resolveSlugParam` will redirect there. For UUID requests we
-  // simply return a minimal metadata object so the redirect can take
-  // over without paying for an extra DB round-trip.
-  if (isUuid(slug)) {
-    return { title: "Roll For Store" };
-  }
-
-  const store = await getStoreBySlug(slug);
+  // UUIDs for rows that have a slug are 308-redirected at the proxy
+  // layer (``web/proxy.ts``) before this function runs. A UUID that
+  // reaches ``generateMetadata`` is therefore a slug-less row (the
+  // ~13 un-backfilled stores) that we still want to render metadata
+  // for at the legacy UUID URL. Use ``getStore`` for that branch;
+  // the common slug branch keeps the existing ``getStoreBySlug`` path.
+  const store = isUuid(slug)
+    ? await getStore(slug)
+    : await getStoreBySlug(slug);
   if (!store) {
     // Trigger Next.js HTTP 404 from metadata so the response status is
     // set before the page body runs. Returning a metadata object here
