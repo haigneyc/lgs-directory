@@ -43,10 +43,39 @@ function isThinStorePage(
   const hasHours =
     (Array.isArray(weekdayText) && weekdayText.length > 0) ||
     (Array.isArray(hoursPeriods) && hoursPeriods.length > 0);
-  const hasAnyPresence = store.presences.length > 0;
+  // Only ACTIVE presences count as signal. A store whose only presence
+  // is a stale (unreachable/dead) Facebook entry must not escape noindex.
+  // This matches the predicate used by buildLocalBusinessJsonLd for
+  // sameAs emission, so indexability and structured data agree.
+  let hasActivePresence = false;
+  const presenceLimit = Math.min(store.presences.length, 50);
+  for (let i = 0; i < presenceLimit; i++) {
+    if (store.presences[i].status === "active") {
+      hasActivePresence = true;
+      break;
+    }
+  }
 
-  return !hasPhone && !hasHours && !hasAnyPresence;
+  return !hasPhone && !hasHours && !hasActivePresence;
 }
+
+/**
+ * Channels where ``sells_mtg_singles === true`` means the user can
+ * actually browse inventory. Social/community channels are excluded:
+ * even if a Facebook page posts about singles, it isn't a shoppable
+ * inventory surface, and promising "browse their online MTG singles
+ * inventory" on that basis produces the dishonest-snippet failure mode
+ * Vera's v2 brief is fighting.
+ *
+ * - ``website``: store's own storefront (Shopify, Crystal Commerce, etc.)
+ * - ``tcgplayer``: TCGplayer seller page -- real, browsable inventory
+ * - ``ebay``: eBay store -- real, browsable inventory
+ */
+const SHOPPABLE_CHANNELS: ReadonlySet<string> = new Set([
+  "website",
+  "tcgplayer",
+  "ebay",
+]);
 
 /**
  * Build the per-store meta description. Conditional on the data the
@@ -75,10 +104,19 @@ function buildStoreDescription(
   const presenceLimit = Math.min(store.presences.length, 50);
   for (let i = 0; i < presenceLimit; i++) {
     const p = store.presences[i];
+    // Per Rex B1: only ACTIVE presences are signal. Stale rows must not
+    // influence either the website fact or the shoppable-inventory copy.
+    if (p.status !== "active") {
+      continue;
+    }
     if (p.channel_type === "website") {
       hasWebsite = true;
     }
-    if (p.sells_mtg_singles === true) {
+    // Per Rex B2: "browse their online MTG singles inventory" copy is
+    // gated on a shoppable channel type. A Facebook page flagged
+    // sells_mtg_singles=true is not browsable inventory and must fall
+    // through to the facts-based tail.
+    if (p.sells_mtg_singles === true && SHOPPABLE_CHANNELS.has(p.channel_type)) {
       hasOnlineSales = true;
     }
   }
