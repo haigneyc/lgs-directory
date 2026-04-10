@@ -1,0 +1,57 @@
+name: daily-sync
+
+on:
+  schedule:
+    # 02:00 UTC daily — offset from Vercel deploys and existing perf workflow.
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: LGS Daily Sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install project dependencies
+        run: uv pip install --system -e .
+
+      - name: Install Playwright browsers (WPN Akamai bypass, graceful fallback)
+        run: playwright install chromium --with-deps
+
+      - name: Run daily sync
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LGS_ENABLE_WPN_RECRAWL: '1'
+          LGS_VALIDATE_CANDIDATE_LIMIT: '250'
+          LGS_VALIDATE_VERIFIED_LIMIT: '250'
+          LGS_HEALTH_LIMIT: '1000'
+          LGS_ENABLE_CLOSURE_CHECK: '1'
+          LGS_CLOSURE_LIMIT: '500'
+          LGS_ENABLE_REVALIDATE: '0'
+          LGS_REVALIDATE_LIMIT: '250'
+          LGS_FRESHNESS_LIMIT: '250'
+          PYTHONUNBUFFERED: '1'
+        run: bash scripts/run_sync.sh
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## LGS Daily Sync" >> "$GITHUB_STEP_SUMMARY"
+          echo "Completed at $(date -u)" >> "$GITHUB_STEP_SUMMARY"
