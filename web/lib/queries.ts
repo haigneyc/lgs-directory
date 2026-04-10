@@ -377,7 +377,7 @@ export async function getCityIndex(stateDbName: string): Promise<CityStats[]> {
        AND UPPER(address->>'state') = UPPER($1)
        AND address->>'city' IS NOT NULL
      GROUP BY address->>'city'
-     HAVING COUNT(*) >= 2
+     HAVING COUNT(*) >= 1 -- include single-store cities (e.g. Riverton WY)
      ORDER BY store_count DESC`,
     [stateDbName]
   );
