@@ -206,6 +206,16 @@ def wpn(
 _DEFAULT_GOOGLE_CACHE_PATH = Path("data/google_places_raw.json")
 
 
+def _load_known_google_place_ids() -> set[str]:
+    """Return all Google place IDs already stored in the database."""
+    with get_session() as session:
+        stmt = select(Store.google_place_id).where(Store.google_place_id.isnot(None))
+        rows = session.execute(stmt).scalars().all()
+    known_ids = {place_id for place_id in rows if place_id}
+    assert isinstance(known_ids, set), "known_ids must be a set"
+    return known_ids
+
+
 @discover.command()
 @click.option(
     "--cache-file",
@@ -223,6 +233,36 @@ _DEFAULT_GOOGLE_CACHE_PATH = Path("data/google_places_raw.json")
     default=None,
     help="Max API requests (cost control).",
 )
+@click.option(
+    "--shard-index",
+    type=int,
+    default=None,
+    help="Zero-based grid shard to scan (requires --shard-count).",
+)
+@click.option(
+    "--shard-count",
+    type=int,
+    default=None,
+    help="Total number of grid shards (requires --shard-index).",
+)
+@click.option(
+    "--detail-tier",
+    type=click.Choice(["none", "pro", "enterprise"]),
+    default="enterprise",
+    show_default=True,
+    help="Place Details tier (accepted for compatibility; search-only in current build).",
+)
+@click.option(
+    "--details-limit",
+    type=int,
+    default=None,
+    help="Max number of Place Details requests (accepted for compatibility).",
+)
+@click.option(
+    "--skip-known-ids/--include-known-ids",
+    default=True,
+    help="Skip fetching details for place IDs already in the database.",
+)
 def google(
     cache_file: Path | None,
     dry_run: bool,
@@ -230,6 +270,11 @@ def google(
     verbose: bool,
     limit_cells: int | None,
     max_requests: int | None,
+    shard_index: int | None,
+    shard_count: int | None,
+    detail_tier: str,
+    details_limit: int | None,
+    skip_known_ids: bool,
 ) -> None:
     """Fetch and ingest stores from Google Places API."""
     from lgs_directory.config import get_settings
@@ -243,6 +288,22 @@ def google(
 
     if verbose:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    if (shard_index is None) != (shard_count is None):
+        console.print("[red]--shard-index and --shard-count must be provided together[/red]")
+        raise SystemExit(1)
+    if shard_count is not None and shard_count <= 0:
+        console.print("[red]--shard-count must be positive[/red]")
+        raise SystemExit(1)
+    if (
+        shard_index is not None
+        and shard_count is not None
+        and (shard_index < 0 or shard_index >= shard_count)
+    ):
+        console.print("[red]--shard-index must be between 0 and shard-count - 1[/red]")
+        raise SystemExit(1)
+
+    assert detail_tier in {"none", "pro", "enterprise"}, f"invalid detail_tier: {detail_tier}"
 
     resolved_cache = cache_file or _DEFAULT_GOOGLE_CACHE_PATH
     assert isinstance(resolved_cache, Path)
@@ -261,6 +322,9 @@ def google(
             console.print("[red]GOOGLE_PLACES_API_KEY not set in environment[/red]")
             raise SystemExit(1)
 
+        if shard_index is not None and shard_count is not None:
+            console.print(f"Grid shard: {shard_index + 1}/{shard_count}")
+
         console.print("Fetching stores from Google Places API...")
         scraper = GooglePlacesScraper(
             api_key=settings.google_places_api_key,
@@ -269,6 +333,8 @@ def google(
             stores = scraper.fetch_stores(
                 limit_cells=limit_cells,
                 max_requests=max_requests,
+                shard_index=shard_index,
+                shard_count=shard_count,
             )
         finally:
             scraper.close()

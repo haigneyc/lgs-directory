@@ -36,6 +36,36 @@ _MAX_PAGES_PER_CELL = 3  # 20 results per page = 60 max
 _REQUEST_DELAY_SECS = 0.3
 
 
+def _apply_grid_shard(
+    cells: list[tuple[float, float]],
+    shard_index: int | None,
+    shard_count: int | None,
+) -> list[tuple[float, float]]:
+    """Return the subset of grid cells assigned to one shard.
+
+    Uses modulo striding so each shard covers the full geographic extent
+    rather than a contiguous block.
+    """
+    assert isinstance(cells, list), "cells must be a list"
+
+    if shard_index is None and shard_count is None:
+        return cells
+
+    assert shard_index is not None, "shard_index required when shard_count is set"
+    assert shard_count is not None, "shard_count required when shard_index is set"
+    assert shard_count > 0, "shard_count must be positive"
+    assert 0 <= shard_index < shard_count, "shard_index must be within shard_count"
+
+    sharded_cells = [
+        cell
+        for idx, cell in enumerate(cells)
+        if idx % shard_count == shard_index
+    ]
+
+    assert len(sharded_cells) > 0, "Shard selection produced no cells"
+    return sharded_cells
+
+
 class GooglePlaceRaw(BaseModel):
     """Raw place record from Google Places API."""
 
@@ -146,35 +176,71 @@ class GooglePlacesScraper:
         assert isinstance(data, dict), "API response must be a dict"
         return data
 
-    def _generate_grid_cells(self, limit_cells: int | None = None) -> list[tuple[float, float]]:
-        """Generate lat/lng grid cell centers covering the contiguous US."""
+    def _generate_grid_cells(
+        self,
+        limit_cells: int | None = None,
+        shard_index: int | None = None,
+        shard_count: int | None = None,
+    ) -> list[tuple[float, float]]:
+        """Generate lat/lng grid cell centers covering the contiguous US.
+
+        When shard_index and shard_count are provided, returns only the cells
+        for that shard (modulo striding over the full grid).
+        """
+        assert shard_index is None or shard_count is not None, (
+            "shard_index requires shard_count"
+        )
+        assert shard_count is None or shard_count > 0, "shard_count must be positive"
+
         cells: list[tuple[float, float]] = []
         lat = _US_LAT_MIN
-        max_cells = limit_cells or 10_000  # safety cap
+        max_cells = 10_000  # safety cap
         while lat <= _US_LAT_MAX and len(cells) < max_cells:
             lng = _US_LNG_MIN
             while lng <= _US_LNG_MAX and len(cells) < max_cells:
                 cells.append((lat + 0.5, lng + 0.5))
                 lng += 1
             lat += 1
+
         assert len(cells) > 0, "Grid must produce at least one cell"
+
+        cells = _apply_grid_shard(cells, shard_index, shard_count)
+
+        if limit_cells is not None:
+            assert limit_cells > 0, "limit_cells must be positive"
+            cells = cells[:limit_cells]
+
+        assert len(cells) > 0, "Grid must produce at least one cell after sharding"
         return cells
 
     def fetch_stores(
         self,
         limit_cells: int | None = None,
         max_requests: int | None = None,
+        shard_index: int | None = None,
+        shard_count: int | None = None,
     ) -> list[GooglePlaceRaw]:
         """Fetch game stores across the US via grid scan.
 
         Args:
             limit_cells: Max grid cells to scan (for testing).
             max_requests: Max total API requests to make (for cost control).
+            shard_index: Zero-based shard index to scan.
+            shard_count: Total number of shards.
 
         Returns:
             Deduplicated list of GooglePlaceRaw records.
         """
-        cells = self._generate_grid_cells(limit_cells)
+        assert shard_index is None or shard_count is not None, (
+            "shard_index requires shard_count"
+        )
+        assert shard_count is None or shard_count > 0, "shard_count must be positive"
+
+        cells = self._generate_grid_cells(
+            limit_cells=limit_cells,
+            shard_index=shard_index,
+            shard_count=shard_count,
+        )
         seen_ids: set[str] = set()
         all_places: list[GooglePlaceRaw] = []
         request_count = 0
@@ -182,9 +248,14 @@ class GooglePlacesScraper:
 
         assert request_cap > 0, "max_requests must be positive"
 
+        shard_label = "full grid"
+        if shard_index is not None and shard_count is not None:
+            shard_label = f"shard {shard_index + 1}/{shard_count}"
+
         logger.info(
-            "Scanning %d grid cells across %d categories (max %s requests)",
+            "Scanning %d grid cells from %s across %d categories (max %s requests)",
             len(cells),
+            shard_label,
             len(_SEARCH_CATEGORIES),
             max_requests if max_requests is not None else "unlimited",
         )

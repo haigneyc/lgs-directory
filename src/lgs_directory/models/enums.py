@@ -99,5 +99,7 @@ class CheckType(StrEnum):
     PLATFORM_DETECT = "platform_detect"
     SINGLES_DETECT = "singles_detect"
     CLOSURE_DETECT = "closure_detect"
+    FRESHNESS_CHECK = "freshness_check"
+    PRICING_CHECK = "pricing_check"
     MANUAL_REVIEW = "manual_review"
     CONTENT_EXTRACT = "content_extract"

@@ -134,5 +134,19 @@ def detect_web_presence(
             error_msg or "",
         )
 
+    # Stamp the store with the time this validation run completed.
+    # last_validated was never populated, leaving it stuck at the last
+    # value written before the merge-drop regression.
+    store.last_validated = now
+    assert store.last_validated == now, "last_validated must equal run timestamp"
+
     assert isinstance(updated_presences, list)
     return updated_presences
+
+
+# Public alias — restored 2026-04-09. lifecycle/health.py imports `check_url`
+# (no underscore), which was the pre-merge public name. `feat/store-expansion`
+# privatized it, but health.py was dropped in the same merge so the broken
+# import was hidden. Aliasing keeps both consumers working with no change to
+# existing call sites.
+check_url = _check_url

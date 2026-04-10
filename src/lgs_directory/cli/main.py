@@ -6,6 +6,8 @@ import click
 
 from lgs_directory.cli.discover import discover
 from lgs_directory.cli.enrich import enrich
+from lgs_directory.cli.freshness import freshness
+from lgs_directory.cli.lifecycle import lifecycle
 from lgs_directory.cli.presence import presence
 from lgs_directory.cli.scrape import scrape
 from lgs_directory.cli.store import store
@@ -20,6 +22,8 @@ def cli() -> None:
 
 cli.add_command(discover)
 cli.add_command(enrich)
+cli.add_command(freshness)
+cli.add_command(lifecycle)
 cli.add_command(presence)
 cli.add_command(scrape)
 cli.add_command(store)
