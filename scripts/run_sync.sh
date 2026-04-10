@@ -50,6 +50,13 @@ lgs enrich match-google --limit 200 || { echo "STEP 8 (google match) FAILED with
 echo "--- Google Places Enrichment ---"
 lgs enrich google --limit 50 || { echo "STEP 9 (google enrich) FAILED with exit $?"; FAILED_STEPS="${FAILED_STEPS}google-enrich "; }
 
+# ---------------------------------------------------------------------------
+# jarvis-lint-python — NOT active in CI yet. Run manually to check violations:
+#   python3 /home/chris/jarvis/tools/jarvis-lint-python/jarvis_lint.py src/
+# Wire into CI once baseline is clean (0 violations). Use "warn" mode first:
+#   python3 /home/chris/jarvis/tools/jarvis-lint-python/jarvis_lint.py src/ || true
+# ---------------------------------------------------------------------------
+
 echo "=== Daily Sync Complete — $(date) ==="
 if [ -n "${FAILED_STEPS}" ]; then
   echo "SYNC FAILURES: ${FAILED_STEPS}"
