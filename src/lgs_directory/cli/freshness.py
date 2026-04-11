@@ -14,6 +14,7 @@ from lgs_directory.db import get_session
 from lgs_directory.models.enums import ChannelType, PresenceStatus, StoreStatus
 from lgs_directory.models.online_presence import OnlinePresence
 from lgs_directory.models.store import Store
+from lgs_directory.validation.pricing_detect import _ECOMMERCE_PLATFORMS
 
 console = Console()
 
@@ -116,6 +117,7 @@ def pricing(
 
         for p in presences:
             result = detect_and_log_pricing(p, session, market_prices)
+            session.commit()
             if result.pricing_method.value == "synced":
                 synced += 1
             elif result.pricing_method.value == "manual":
@@ -191,6 +193,8 @@ def _get_eligible_presences(
             .where(OnlinePresence.status == PresenceStatus.ACTIVE)
         )
     else:
+        platform_values = [p.value for p in _ECOMMERCE_PLATFORMS]
+        assert len(platform_values) > 0, "Must have at least one e-commerce platform"
         stmt = (
             select(OnlinePresence)
             .join(Store)
@@ -198,6 +202,7 @@ def _get_eligible_presences(
             .where(OnlinePresence.channel_type == ChannelType.WEBSITE)
             .where(OnlinePresence.status == PresenceStatus.ACTIVE)
             .where(OnlinePresence.sells_mtg_singles.is_(True))
+            .where(OnlinePresence.platform.in_(platform_values))
             .limit(limit)
         )
 

@@ -8,10 +8,12 @@ import {
   getTotalStoreCount,
   getPopularCities,
   getGameTagCounts,
+  getFeaturedStores,
 } from "@/lib/queries";
-import { abbreviationToStateName } from "@/lib/slugs";
+import { abbreviationToStateName, storeHref } from "@/lib/slugs";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import { StoreTable } from "@/components/store-table";
+import type { Store as StoreRow } from "@/lib/types";
 import { FilterBar } from "@/components/filter-bar";
 import { Pagination } from "@/components/pagination";
 import { HeroSearch } from "@/components/hero-search";
@@ -30,6 +32,8 @@ import {
 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 import { ScrollToResults } from "@/components/scroll-to-results";
+import { toDisplayCase } from "@/lib/display-case";
+import { formatCityState } from "@/lib/format";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -105,6 +109,10 @@ export default function HomePage({ searchParams }: PageProps) {
           </Suspense>
         </div>
       </section>
+
+      <Suspense fallback={null}>
+        <FeaturedStoresBlock />
+      </Suspense>
 
       <Suspense fallback={null}>
         <GameCategoryCards />
@@ -212,6 +220,70 @@ async function HeroStatsBlock() {
         <span className="text-sm text-zinc-500">categorized</span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Featured stores section — shows up to 8 premium stores with hero images.
+ * Only renders if premium stores exist; hidden otherwise.
+ */
+async function FeaturedStoresBlock() {
+  const featuredStores = await getFeaturedStores(8);
+  console.assert(Array.isArray(featuredStores), "FeaturedStoresBlock: featuredStores must be an array");
+  console.assert(featuredStores.length <= 8, "FeaturedStoresBlock: expected at most 8 featured stores");
+
+  if (featuredStores.length === 0) {
+    return null;
+  }
+
+  const MAX_FEATURED = 8;
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 lg:px-6 py-12">
+      <div className="flex items-center gap-3 mb-6">
+        <Star className="w-5 h-5 text-yellow-500" />
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Featured Stores
+        </h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {featuredStores.slice(0, MAX_FEATURED).map((store) => (
+          <FeaturedStoreCard key={store.id} store={store} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FeaturedStoreCard({ store }: { store: StoreRow }) {
+  console.assert(typeof store.id === "string", "FeaturedStoreCard: store.id must be a string");
+  console.assert(typeof store.name === "string", "FeaturedStoreCard: store.name must be a string");
+
+  return (
+    <Link
+      href={storeHref(store)}
+      className="group rounded-xl border border-yellow-500/20 bg-yellow-500/[0.03] overflow-hidden transition-all duration-200 hover:border-yellow-400/40 hover:shadow-lg hover:scale-[1.02]"
+    >
+      {store.hero_image_url && store.hero_image_url.startsWith("https://") && (
+        <div className="h-36 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={store.hero_image_url}
+            alt={toDisplayCase(store.name)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+        </div>
+      )}
+      <div className="p-4">
+        <h3 className="font-display font-semibold text-sm text-zinc-100 group-hover:text-yellow-400 transition-colors truncate">
+          {toDisplayCase(store.name)}
+        </h3>
+        <p className="text-xs text-zinc-500 mt-1">
+          {formatCityState(store.address)}
+        </p>
+      </div>
+    </Link>
   );
 }
 

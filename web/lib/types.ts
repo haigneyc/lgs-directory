@@ -75,6 +75,10 @@ export interface StoreAddress {
 
 // --- Row types ---
 
+/** Premium listing status — null = unclaimed, 'claimed' = verified owner, 'premium' = paying subscriber */
+export const PREMIUM_STATUSES = ["claimed", "premium"] as const;
+export type PremiumStatus = (typeof PREMIUM_STATUSES)[number];
+
 export interface Store {
   id: string;
   /**
@@ -97,6 +101,16 @@ export interface Store {
   first_seen: string;
   last_validated: string | null;
   notes: string | null;
+  /** Set on claim approval — email of the verified owner */
+  claimed_by_email: string | null;
+  /** When the claim was approved */
+  claimed_at: string | null;
+  /** null = unclaimed, 'claimed' = verified, 'premium' = paying */
+  premium_status: PremiumStatus | null;
+  /** Stripe subscription end date, set by webhook */
+  premium_until: string | null;
+  /** Hero banner image URL for premium stores */
+  hero_image_url: string | null;
 }
 
 export interface OnlinePresence {
@@ -169,4 +183,33 @@ export interface StoreContent {
   products: string[];
   has_events: boolean;
   event_url: string | null;
+}
+
+/** Claim role options for the claim form */
+export const CLAIM_ROLES = ["owner", "manager", "employee", "other"] as const;
+export type ClaimRole = (typeof CLAIM_ROLES)[number];
+
+/** Claim status lifecycle */
+export const CLAIM_STATUSES = ["pending", "approved", "denied"] as const;
+export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
+
+export interface StoreClaim {
+  id: string;
+  store_id: string;
+  name: string;
+  email: string;
+  role: ClaimRole;
+  proof_text: string;
+  status: ClaimStatus;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface StoreEvent {
+  id: string;
+  store_id: string;
+  title: string;
+  event_date: string;
+  description: string | null;
+  created_at: string;
 }

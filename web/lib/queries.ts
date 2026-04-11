@@ -16,6 +16,7 @@ import type {
   StoreEnrichment,
   StoreContent,
   StoreCategory,
+  StoreEvent,
   HoursPeriod,
 } from "./types";
 
@@ -151,7 +152,9 @@ export async function listStores(
 
   const stores = await query<Store>(
     `SELECT * FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}
-     ORDER BY name ASC
+     ORDER BY
+       CASE WHEN premium_status = 'premium' THEN 0 ELSE 1 END,
+       name ASC
      LIMIT $${idx++} OFFSET $${idx++}`,
     [...values, PAGE_SIZE, offset]
   );
@@ -912,7 +915,9 @@ export async function listStoresByCategory(
 
   const stores = await query<Store>(
     `SELECT * FROM stores ${where} ${TRUSTED_CANDIDATE_FILTER}
-     ORDER BY name ASC
+     ORDER BY
+       CASE WHEN premium_status = 'premium' THEN 0 ELSE 1 END,
+       name ASC
      LIMIT $${idx++} OFFSET $${idx++}`,
     [...values, PAGE_SIZE, offset]
   );
@@ -1124,6 +1129,77 @@ export async function getGameTagCounts(): Promise<
     return rows;
   } catch (err) {
     console.error("getGameTagCounts: query failed", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Premium listings queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch up to `limit` premium stores for the homepage "Featured Stores"
+ * section. Only returns stores with premium_status = 'premium' and a
+ * hero_image_url set.
+ */
+export async function getFeaturedStores(
+  limit: number = 8
+): Promise<Store[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("stores");
+  cacheTag("featured-stores");
+  console.assert(typeof limit === "number" && limit > 0, "getFeaturedStores: limit must be positive");
+  console.assert(limit <= 20, "getFeaturedStores: limit must be <= 20");
+
+  try {
+    const rows = await query<Store>(
+      `SELECT * FROM stores
+       WHERE premium_status = 'premium'
+         AND premium_until > now()
+         AND hero_image_url IS NOT NULL
+         AND status IN ('active', 'verified', 'candidate')
+         ${TRUSTED_CANDIDATE_FILTER}
+       ORDER BY name ASC
+       LIMIT $1`,
+      [limit]
+    );
+
+    console.assert(Array.isArray(rows), "getFeaturedStores: rows must be an array");
+    return rows;
+  } catch (err) {
+    console.error("getFeaturedStores: query failed", err);
+    return [];
+  }
+}
+
+/**
+ * Fetch upcoming events for a store (event_date >= today). Only called on
+ * store detail pages for premium stores.
+ */
+export async function getStoreEvents(
+  storeId: string
+): Promise<StoreEvent[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`store:${storeId}`);
+  cacheTag("store-events");
+  console.assert(typeof storeId === "string" && storeId.length > 0, "getStoreEvents: storeId must be non-empty");
+
+  try {
+    const rows = await query<StoreEvent>(
+      `SELECT * FROM store_events
+       WHERE store_id = $1
+         AND event_date >= CURRENT_DATE
+       ORDER BY event_date ASC
+       LIMIT 20`,
+      [storeId]
+    );
+
+    console.assert(Array.isArray(rows), "getStoreEvents: rows must be an array");
+    return rows;
+  } catch (err) {
+    console.error("getStoreEvents: query failed", err);
     return [];
   }
 }

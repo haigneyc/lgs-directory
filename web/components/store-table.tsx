@@ -8,10 +8,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StoreStatusBadge, WpnBadge } from "@/components/status-badge";
+import { PremiumBadge } from "@/components/premium-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { formatCityState } from "@/lib/format";
 import { storeHref } from "@/lib/slugs";
 import type { Store, StoreEnrichment } from "@/lib/types";
+import { toDisplayCase } from "@/lib/display-case";
 import { MapPin, Star } from "lucide-react";
 
 const MAX_TABLE_ROWS = 100;
@@ -71,15 +73,26 @@ export function StoreTable({ stores, enrichments }: StoreTableProps) {
       <TableBody>
         {stores.slice(0, MAX_TABLE_ROWS).map((store) => {
           const enrichment = enrichments?.get(store.id);
+          const isPremiumRow = store.premium_status === "premium";
           return (
-            <TableRow key={store.id} className="border-zinc-800/40 hover:bg-zinc-800/30 transition-colors">
+            <TableRow
+              key={store.id}
+              className={
+                isPremiumRow
+                  ? "border-yellow-500/20 bg-yellow-500/[0.03] hover:bg-yellow-500/[0.06] transition-colors"
+                  : "border-zinc-800/40 hover:bg-zinc-800/30 transition-colors"
+              }
+            >
               <TableCell>
-                <Link
-                  href={storeHref(store)}
-                  className="font-medium text-zinc-100 hover:text-yellow-500 transition-colors duration-200"
-                >
-                  {store.name}
-                </Link>
+                <span className="inline-flex items-center gap-2">
+                  <Link
+                    href={storeHref(store)}
+                    className="font-medium text-zinc-100 hover:text-yellow-500 transition-colors duration-200"
+                  >
+                    {toDisplayCase(store.name)}
+                  </Link>
+                  <PremiumBadge status={store.premium_status} />
+                </span>
               </TableCell>
               <TableCell>
                 <span className="inline-flex items-center gap-1.5 text-zinc-400">
