@@ -119,7 +119,10 @@ export async function listStores(
     values.push(params.sellsSingles);
   }
   if (params.search) {
-    conditions.push(`name ILIKE $${idx++}`);
+    conditions.push(
+      `(name ILIKE $${idx} OR address->>'city' ILIKE $${idx} OR address->>'state' ILIKE $${idx})`
+    );
+    idx++;
     values.push(`%${params.search}%`);
   }
   if (params.category) {

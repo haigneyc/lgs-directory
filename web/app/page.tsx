@@ -29,6 +29,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
+import { ScrollToResults } from "@/components/scroll-to-results";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -144,7 +145,10 @@ export default function HomePage({ searchParams }: PageProps) {
       </Suspense>
 
       {/* Store Listing Section — dynamic, awaits searchParams */}
-      <section className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+      <section id="results" className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+        <Suspense fallback={null}>
+          <ScrollToResults />
+        </Suspense>
         <Suspense fallback={null}>
           <FilterBarWrapper />
         </Suspense>
