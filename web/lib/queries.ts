@@ -120,7 +120,7 @@ export async function listStores(
   }
   if (params.search) {
     conditions.push(
-      `(name ILIKE $${idx} OR address->>'city' ILIKE $${idx} OR address->>'state' ILIKE $${idx})`
+      `(name ILIKE $${idx} OR address->>'city' ILIKE $${idx} OR address->>'state' ILIKE $${idx} OR (address->>'city' || ', ' || address->>'state') ILIKE $${idx})`
     );
     idx++;
     values.push(`%${params.search}%`);
