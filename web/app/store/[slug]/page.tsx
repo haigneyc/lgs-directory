@@ -12,6 +12,7 @@ import {
   getStoreContent,
   getStoreCategories,
   getOtherStoresInCity,
+  getStoreEvents,
 } from "@/lib/queries";
 import type { StoreWithPresences, StoreEnrichment } from "@/lib/types";
 import {
@@ -103,6 +104,7 @@ async function resolveSlugParam(
   return getStoreBySlug(param);
 }
 import { StoreStatusBadge, WpnBadge, OnlineSellerBadge } from "@/components/status-badge";
+import { PremiumBadge } from "@/components/premium-badge";
 import { HoursBadge } from "@/components/hours-badge";
 import { PresenceTable } from "@/components/presence-table";
 import { formatAddress, formatDate, formatProduct, formatCategory } from "@/lib/format";
@@ -265,10 +267,12 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
     notFound();
   }
 
-  const [enrichment, storeContent, categories] = await Promise.all([
+  const isPremium = store.premium_status === "premium";
+  const [enrichment, storeContent, categories, storeEvents] = await Promise.all([
     getStoreEnrichment(store.id),
     getStoreContent(store.id),
     getStoreCategories(store.id),
+    isPremium ? getStoreEvents(store.id) : Promise.resolve([]),
   ]);
 
   console.assert(typeof store.name === "string", "StoreDetailPage: store.name must be a string");
@@ -291,6 +295,19 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
 
   return (
     <>
+      {/* Hero image banner for premium stores */}
+      {isPremium && store.hero_image_url && store.hero_image_url.startsWith("https://") && (
+        <div className="rounded-xl overflow-hidden mb-6 border border-yellow-500/20">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={store.hero_image_url}
+            alt={`${toDisplayCase(store.name)} hero image`}
+            className="w-full h-48 sm:h-64 object-cover"
+            loading="eager"
+          />
+        </div>
+      )}
+
       <Breadcrumb
         items={[
           { name: "Home", href: "/" },
@@ -304,9 +321,12 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
       <div className="mt-6 mb-8">
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-3xl font-bold tracking-tight mb-2">
-              {toDisplayCase(store.name)}
-            </h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="font-display text-3xl font-bold tracking-tight">
+                {toDisplayCase(store.name)}
+              </h1>
+              <PremiumBadge status={store.premium_status} />
+            </div>
 
             {/* Rating */}
             {hasRating && (
@@ -408,7 +428,7 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
             </div>
           )}
 
-          {/* Events */}
+          {/* Events (from website scrape) */}
           {storeContent?.has_events && (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
               <div className="flex items-center gap-2 mb-3">
@@ -430,6 +450,36 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
                   This store hosts in-store events
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Premium store events (from store_events table) */}
+          {isPremium && storeEvents.length > 0 && (
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="w-4 h-4 text-yellow-500" />
+                <h2 className="font-display font-semibold text-zinc-200">Upcoming Events</h2>
+              </div>
+              <ul className="space-y-3">
+                {storeEvents.map((evt) => (
+                  <li key={evt.id} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-12 text-center">
+                      <p className="text-xs text-yellow-500 font-medium uppercase">
+                        {new Date(evt.event_date + "T00:00:00").toLocaleDateString("en-US", { month: "short" })}
+                      </p>
+                      <p className="text-lg font-bold text-zinc-100">
+                        {new Date(evt.event_date + "T00:00:00").getDate()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">{evt.title}</p>
+                      {evt.description && (
+                        <p className="text-xs text-zinc-400 mt-0.5">{evt.description}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -517,6 +567,24 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 View on Google Maps
+              </a>
+            </div>
+          )}
+
+          {/* Claim CTA -- only shown for unclaimed stores */}
+          {store.claimed_by_email === null && (
+            <div className="rounded-xl border border-yellow-600/30 bg-yellow-600/5 p-6">
+              <h3 className="font-display font-semibold text-sm text-yellow-400 mb-2">
+                Own this store?
+              </h3>
+              <p className="text-xs text-zinc-400 mb-4">
+                Claim your listing to get a verified badge and unlock premium features.
+              </p>
+              <a
+                href={`${canonicalPath}/claim`}
+                className="inline-flex items-center justify-center w-full rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-yellow-500 transition-colors"
+              >
+                Claim This Store
               </a>
             </div>
           )}
