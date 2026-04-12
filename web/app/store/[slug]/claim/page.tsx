@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getStoreBySlug, getStore } from "@/lib/queries";
@@ -48,7 +49,9 @@ export default function ClaimPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 lg:px-6 py-12">
-      <DynamicClaimContent params={params} />
+      <Suspense fallback={<div className="animate-pulse text-zinc-500 text-sm">Loading...</div>}>
+        <DynamicClaimContent params={params} />
+      </Suspense>
     </div>
   );
 }
