@@ -6,8 +6,8 @@ on:
       - 'web/**'
       - 'perf/**'
       - '.github/workflows/perf.yml'
-  schedule:
-    - cron: '17 4 * * *'  # nightly 04:17 UTC
+  # schedule:
+  #   - cron: '17 4 * * *'  # nightly 04:17 UTC — disabled 2026-04-12, re-enable when needed
   workflow_dispatch: {}
 
 permissions:

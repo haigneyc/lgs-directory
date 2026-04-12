@@ -24,14 +24,14 @@ import { toDisplayCase } from "@/lib/display-case";
  */
 
 export const metadata: Metadata = {
-  title: "Game Stores Near Me | Roll For Store",
+  title: "Tabletop Gaming Stores Near Me | Roll For Store",
   description:
-    "Find local game stores, comic shops, and hobby stores near you. Browse nearest stores by distance with hours, phone, and directions.",
+    "Find tabletop gaming stores, TCG stores, and miniatures shops near you. Browse local game stores by distance with hours, phone, and directions.",
   alternates: { canonical: `${SITE_URL}/near-me` },
   openGraph: {
-    title: "Game Stores Near Me | Roll For Store",
+    title: "Tabletop Gaming Stores Near Me | Roll For Store",
     description:
-      "Find local game stores, comic shops, and hobby stores near you.",
+      "Find tabletop gaming stores, TCG stores, and miniatures shops near you.",
     type: "website",
     url: `${SITE_URL}/near-me`,
     siteName: "Roll For Store",
@@ -122,13 +122,19 @@ export default function NearMePage() {
             <MapPin className="w-5 h-5" />
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight">
-            Game Stores Near Me
+            Tabletop Gaming Stores Near Me
           </h1>
         </div>
         <p className="text-sm text-zinc-500 max-w-2xl">
           The nearest local game stores based on your approximate location.
           Use the search below to refine by city, zip code, or your precise
           browser location.
+        </p>
+        <p className="text-sm text-zinc-500 max-w-2xl mt-2">
+          Whether you&apos;re hunting for a tabletop game store stocked with
+          the latest releases, a TCG store running Friday Night Magic, or a
+          miniatures shop with Warhammer and painting supplies — Roll For Store
+          shows you every tabletop gaming destination in your area.
         </p>
       </div>
 
