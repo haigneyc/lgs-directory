@@ -22,6 +22,10 @@ fi
 echo "=== Google Discovery Sync — $(date) ==="
 echo "Shard: ${SHARD_INDEX}/${SHARD_COUNT}, Max requests: ${MAX_REQUESTS}"
 
+# Run free scrapers first — reduces paid API overlap
+echo "--- Free Scrapers ---"
+lgs discover games-workshop || echo "GW scraper failed, continuing..."
+
 # Run Google Places discovery for this shard
 lgs discover google \
   --shard-index "$SHARD_INDEX" \

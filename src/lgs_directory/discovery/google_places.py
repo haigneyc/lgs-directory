@@ -18,11 +18,6 @@ _TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 _SEARCH_CATEGORIES = [
     "game store",
     "hobby shop",
-    "card game store",
-    "comic book store",
-    "retro video game store",
-    "used video game store",
-    "warhammer store",
 ]
 
 # 1-degree grid over contiguous US
@@ -31,7 +26,9 @@ _US_LAT_MAX = 50
 _US_LNG_MIN = -125
 _US_LNG_MAX = -66
 
-_RADIUS_METERS = 50_000  # 50km search radius
+_GRID_STEP = 2  # degrees between grid cell centers (was 1)
+_RADIUS_METERS = 120_000  # 120km — wider radius with sparser grid post-seeding
+_SPARSE_PAGE_THRESHOLD = 15  # skip next page if current returned fewer results
 _MAX_PAGES_PER_CELL = 3  # 20 results per page = 60 max
 _REQUEST_DELAY_SECS = 0.3
 
@@ -194,13 +191,14 @@ class GooglePlacesScraper:
 
         cells: list[tuple[float, float]] = []
         lat = _US_LAT_MIN
+        half_step = _GRID_STEP / 2.0
         max_cells = 10_000  # safety cap
         while lat <= _US_LAT_MAX and len(cells) < max_cells:
             lng = _US_LNG_MIN
             while lng <= _US_LNG_MAX and len(cells) < max_cells:
-                cells.append((lat + 0.5, lng + 0.5))
-                lng += 1
-            lat += 1
+                cells.append((lat + half_step, lng + half_step))
+                lng += _GRID_STEP
+            lat += _GRID_STEP
 
         assert len(cells) > 0, "Grid must produce at least one cell"
 
@@ -313,6 +311,17 @@ class GooglePlacesScraper:
                     pages_fetched += 1
 
                     if page_token is None or len(places) == 0:
+                        break
+
+                    # Sparse page — next page is almost certainly empty
+                    if len(places) < _SPARSE_PAGE_THRESHOLD:
+                        logger.debug(
+                            "Sparse page (%d results) for %s at (%s, %s), skipping next",
+                            len(places),
+                            category,
+                            lat,
+                            lng,
+                        )
                         break
 
                     if self._delay > 0:
