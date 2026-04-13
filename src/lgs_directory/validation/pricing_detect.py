@@ -30,6 +30,16 @@ from lgs_directory.validation.scryfall import MarketPrice, fetch_probe_prices
 
 logger = logging.getLogger(__name__)
 
+# Known e-commerce platforms that support MTG singles pricing detection.
+_ECOMMERCE_PLATFORMS: frozenset[Platform] = frozenset({
+    Platform.CRYSTAL_COMMERCE,
+    Platform.BINDERPOS,
+    Platform.SHOPIFY,
+    Platform.SQUARESPACE,
+    Platform.WOOCOMMERCE,
+    Platform.WORDPRESS_STRIPE,
+})
+
 _MAX_PRESENCES = 1000  # Upper bound for loop safety
 _MIN_CARDS_FOR_INFERENCE = 3
 _SYNCED_TIGHT_THRESHOLD = 10.0  # avg_delta_pct
