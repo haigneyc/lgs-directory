@@ -1,9 +1,8 @@
 name: daily-sync
 
 on:
-  schedule:
-    # 02:00 UTC daily — offset from Vercel deploys and existing perf workflow.
-    - cron: '0 2 * * *'
+  # schedule:
+  #   - cron: '0 2 * * *'  # disabled 2026-04-15, re-enable when needed
   workflow_dispatch: {}
 
 concurrency:
