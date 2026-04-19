@@ -11,6 +11,7 @@ import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
 import { AmazonShelf } from "@/components/amazon/amazon-shelf";
 import { SHELVES } from "@/lib/amazon-shelves";
+import { AffiliateLink } from "@/components/affiliate-link";
 import { Gamepad2 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 
@@ -63,14 +64,14 @@ export default function RetroGamesPage({ searchParams }: PageProps) {
         <p className="text-sm text-zinc-400 max-w-2xl mt-2 leading-relaxed">
           {CATEGORY.heroText}
         </p>
-        <a
+        <AffiliateLink
           href={EBAY_URLS.collections.boardGames}
-          target="_blank"
-          rel="noopener noreferrer"
+          network="ebay"
+          placement="retro-games-cta"
           className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg border border-yellow-600/30 bg-yellow-600/5 text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200"
         >
           Shop Retro Games &amp; Consoles on eBay →
-        </a>
+        </AffiliateLink>
         <AffiliateDisclosure className="mt-1.5" />
       </div>
 
@@ -79,7 +80,10 @@ export default function RetroGamesPage({ searchParams }: PageProps) {
       </Suspense>
 
       <div className="mt-10">
-        <AmazonShelf shelf={SHELVES["retro-games"]} />
+        <AmazonShelf
+          shelf={SHELVES["retro-games"]}
+          placement="retro-games-bottom-shelf"
+        />
       </div>
 
       <Suspense fallback={null}>
@@ -162,6 +166,7 @@ async function DynamicStoreSection({
 async function TopCitiesSection() {
   const topCities = await getTopCitiesForCategory(CATEGORY.dbCategory);
   console.assert(Array.isArray(topCities), "TopCitiesSection: topCities must be an array");
+  console.assert(topCities.length >= 0, "TopCitiesSection: topCities length must be non-negative");
   if (topCities.length === 0) {
     return null;
   }

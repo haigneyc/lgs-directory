@@ -7,7 +7,11 @@ import NearMeClient from "./near-me-client";
 import { getNearbyStores } from "@/lib/queries";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumb } from "@/components/seo/breadcrumb";
-import { SITE_URL } from "@/lib/site";
+import { AffiliateDisclosure } from "@/components/affiliate-disclosure";
+import { AmazonShelf } from "@/components/amazon/amazon-shelf";
+import { AffiliateLink } from "@/components/affiliate-link";
+import { SHELVES } from "@/lib/amazon-shelves";
+import { SITE_URL, EBAY_URLS } from "@/lib/site";
 import { formatCityState, formatDistance } from "@/lib/format";
 import { storeHref } from "@/lib/slugs";
 import { toDisplayCase } from "@/lib/display-case";
@@ -190,6 +194,48 @@ async function NearbyStoresList() {
     <>
       <JsonLd data={jsonLdData} />
 
+      <section className="mb-6 rounded-xl border border-yellow-600/25 bg-yellow-600/5 p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-semibold text-yellow-300">
+              Shop TCG Singles on eBay
+            </h2>
+            <p className="text-sm text-zinc-500">
+              Sealed product, graded cards, and collectible singles for the games most people search for nearby.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AffiliateLink
+            href={EBAY_URLS.collections.mtg}
+            network="ebay"
+            placement="near-me-top-cta"
+            className="group rounded-lg border border-yellow-600/30 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-yellow-500/50 hover:bg-yellow-600/10"
+          >
+            <p className="text-sm font-medium text-zinc-100 transition-colors group-hover:text-yellow-300">
+              Shop MTG Singles on eBay
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Browse booster boxes, graded staples, and collectible Magic cards.
+            </p>
+          </AffiliateLink>
+          <AffiliateLink
+            href={EBAY_URLS.collections.pokemon}
+            network="ebay"
+            placement="near-me-top-cta"
+            className="group rounded-lg border border-yellow-600/30 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-yellow-500/50 hover:bg-yellow-600/10"
+          >
+            <p className="text-sm font-medium text-zinc-100 transition-colors group-hover:text-yellow-300">
+              Shop Pokemon Cards on eBay
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Find sealed product, slabs, and high-demand singles from recent and vintage sets.
+            </p>
+          </AffiliateLink>
+        </div>
+        <AffiliateDisclosure className="mt-2" />
+      </section>
+
       {geo.fromHeaders && geo.city !== null && (
         <p className="text-xs text-zinc-500 mb-4">
           Showing stores near{" "}
@@ -230,6 +276,13 @@ async function NearbyStoresList() {
           ))}
         </ul>
       )}
+
+      <div className="mb-8">
+        <AmazonShelf
+          shelf={SHELVES["tcg-essentials"]}
+          placement="near-me-bottom-shelf"
+        />
+      </div>
 
       <NearMeClient
         initialLat={geo.fromHeaders ? geo.lat : null}

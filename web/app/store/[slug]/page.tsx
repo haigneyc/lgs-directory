@@ -637,7 +637,10 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
 
       {/* Amazon affiliate shelf — contextual to the store's primary category. */}
       <div className="border-t border-zinc-800/60 pt-8 mb-8">
-        <AmazonShelf shelf={shelfForStoreCategory(categories[0] ?? null)} />
+        <AmazonShelf
+          shelf={shelfForStoreCategory(categories[0] ?? null)}
+          placement="store-detail-bottom-shelf"
+        />
       </div>
 
       <JsonLd data={buildLocalBusinessJsonLd(store, enrichment, canonicalUrl)} />

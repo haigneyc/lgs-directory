@@ -10,6 +10,7 @@ import {
   getGameTagCounts,
   getFeaturedStores,
 } from "@/lib/queries";
+import { EBAY_URLS } from "@/lib/site";
 import { abbreviationToStateName, storeHref } from "@/lib/slugs";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
 import { StoreTable } from "@/components/store-table";
@@ -32,6 +33,7 @@ import {
 } from "lucide-react";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 import { ScrollToResults } from "@/components/scroll-to-results";
+import { AffiliateLink } from "@/components/affiliate-link";
 import { toDisplayCase } from "@/lib/display-case";
 import { formatCityState } from "@/lib/format";
 import {
@@ -129,10 +131,10 @@ export default function HomePage({ searchParams }: PageProps) {
 
       {/* eBay Storefront Banner -- static */}
       <section className="mx-auto max-w-7xl px-4 lg:px-6 pb-4 pt-4">
-        <a
-          href="https://www.ebay.com/inf/rollforstore"
-          target="_blank"
-          rel="noopener noreferrer"
+        <AffiliateLink
+          href={EBAY_URLS.storefront}
+          network="ebay"
+          placement="homepage-ebay-banner"
           className="flex items-center justify-between gap-4 rounded-xl border border-yellow-600/30 bg-yellow-600/5 px-5 py-4 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200 group"
         >
           <div className="flex items-center gap-3">
@@ -149,7 +151,7 @@ export default function HomePage({ searchParams }: PageProps) {
           <span className="text-xs font-medium text-yellow-600 group-hover:text-yellow-500 transition-colors whitespace-nowrap">
             Shop Now →
           </span>
-        </a>
+        </AffiliateLink>
         <AffiliateDisclosure className="mt-1.5 px-1" />
       </section>
 
@@ -177,7 +179,11 @@ export default function HomePage({ searchParams }: PageProps) {
 
       {/* Amazon affiliate shelf — broad TCG audience default. */}
       <section className="mx-auto max-w-7xl px-4 lg:px-6 pb-12">
-        <AmazonShelf shelf={SHELVES["tcg-essentials"]} compact />
+        <AmazonShelf
+          shelf={SHELVES["tcg-essentials"]}
+          placement="homepage-tcg-shelf"
+          compact
+        />
       </section>
 
       <Suspense fallback={<BrowseByStateSkeleton />}>

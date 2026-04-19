@@ -4,6 +4,8 @@ import Link from "next/link";
 import Script from "next/script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_URL, EBAY_URLS } from "@/lib/site";
+import { AffiliateClickTracker } from "@/components/affiliate-click-tracker";
+import { AffiliateLink } from "@/components/affiliate-link";
 import {
   MapPin,
   Sword,
@@ -108,6 +110,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50 antialiased font-body">
+        <AffiliateClickTracker />
         <header className="border-b border-amber-900/20 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-50">
           <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-6">
             <Link
@@ -138,14 +141,14 @@ export default function RootLayout({
                 );
               })}
               <div className="ml-2 flex flex-col items-center">
-                <a
+                <AffiliateLink
                   href={EBAY_STOREFRONT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  network="ebay"
+                  placement="site-nav-ebay"
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-yellow-500 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all duration-200"
                 >
                   Shop Cards
-                </a>
+                </AffiliateLink>
                 <p className="text-[10px] text-zinc-600 italic -mt-1">Affiliate link</p>
               </div>
             </div>
@@ -180,9 +183,14 @@ export default function RootLayout({
                 <h3 className="font-display font-semibold text-sm text-zinc-300 mb-3">Resources</h3>
                 <ul className="space-y-2">
                   <li>
-                    <a href={EBAY_STOREFRONT_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+                    <AffiliateLink
+                      href={EBAY_STOREFRONT_URL}
+                      network="ebay"
+                      placement="footer-ebay"
+                      className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
                       Shop Cards on eBay
-                    </a>
+                    </AffiliateLink>
                     <p className="text-xs text-zinc-600 italic mt-0.5">eBay Partner affiliate link</p>
                   </li>
                   <li>
@@ -256,15 +264,15 @@ function MobileNav() {
           );
         })}
         <div className="border-t border-zinc-800 mt-1 pt-1">
-          <a
+          <AffiliateLink
             href={EBAY_STOREFRONT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            network="ebay"
+            placement="mobile-nav-ebay"
             className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-400 hover:bg-yellow-600/10 transition-colors"
             title="Affiliate link - we earn a commission on purchases"
           >
             Shop Cards
-          </a>
+          </AffiliateLink>
           <p className="px-3 text-[10px] text-zinc-600 italic">Affiliate link</p>
         </div>
       </div>

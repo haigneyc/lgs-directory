@@ -11,6 +11,8 @@ import { Pagination } from "@/components/pagination";
 import { CityGrid } from "@/components/city-grid";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
+import { AmazonShelf } from "@/components/amazon/amazon-shelf";
+import { SHELVES } from "@/lib/amazon-shelves";
 import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
@@ -111,6 +113,7 @@ async function StaticStateHeader({
     notFound();
   }
 
+  console.assert(typeof stateSlug === "string" && stateSlug.length > 0, "StaticStateHeader: stateSlug must be non-empty");
   console.assert(typeof stateName === "string", "StaticStateHeader: stateName must be a string");
 
   const breadcrumbItems = [
@@ -161,6 +164,8 @@ async function StaticStateStats({
   const activeCount = currentStats?.active_count ?? 0;
   const wpnPremiumCount = currentStats?.wpn_premium_count ?? 0;
   const onlineCount = currentStats?.online_count ?? 0;
+
+  console.assert(Array.isArray(cities), "StaticStateStats: cities must be an array");
 
   return (
     <>
@@ -305,6 +310,14 @@ async function DynamicStoresSection({
             total={result.total}
           />
         </Suspense>
+      </div>
+
+      <div className="mb-8">
+        <AmazonShelf
+          shelf={SHELVES["tcg-essentials"]}
+          placement="state-directory-shelf"
+          variant="strip"
+        />
       </div>
 
       <JsonLd data={jsonLdData} />
