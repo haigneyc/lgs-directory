@@ -1,15 +1,21 @@
-const FEATURED_CARD_COUNT = 4;
+const FEATURED_CARD_COUNT = 8;
 const GAME_CARD_COUNT = 8;
 const STORE_TYPE_CARD_COUNT = 4;
 const POPULAR_CITY_CARD_COUNT = 12;
-const STATE_CITY_CARD_COUNT = 15;
-const BROWSE_STATE_LINK_COUNT = 48;
+const STATE_CITY_CARD_COUNT = 500;
+const BROWSE_STATE_LINK_COUNT = 60;
 
-const FEATURED_CARDS = [0, 1, 2, 3] as const;
+const FEATURED_CARDS = Array.from(
+  { length: FEATURED_CARD_COUNT },
+  (_, index) => index
+);
 const GAME_CARDS = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 const STORE_TYPE_CARDS = [0, 1, 2, 3] as const;
 const POPULAR_CITY_CARDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
-const STATE_CITY_CARDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
+const STATE_CITY_CARDS = Array.from(
+  { length: STATE_CITY_CARD_COUNT },
+  (_, index) => index
+);
 const HERO_STAT_LABEL_WIDTHS = ["w-16", "w-20", "w-24"] as const;
 const FILTER_SELECT_WIDTHS = ["w-32", "w-36", "w-36", "w-40"] as const;
 const BROWSE_STATE_LINK_WIDTHS = ["w-16", "w-20", "w-24", "w-28", "w-20", "w-24"] as const;
@@ -33,15 +39,28 @@ function SectionHeadingSkeleton({
   );
 }
 
-function BreadcrumbSkeleton({ currentWidthClass }: Readonly<{ currentWidthClass: string }>) {
+function BreadcrumbSkeleton({
+  currentWidthClass,
+  crumbCount = 2,
+}: Readonly<{ currentWidthClass: string; crumbCount?: number }>) {
   console.assert(typeof currentWidthClass === "string", "BreadcrumbSkeleton: currentWidthClass must be a string");
   console.assert(currentWidthClass.length > 0, "BreadcrumbSkeleton: currentWidthClass must not be empty");
+  console.assert(crumbCount >= 2 && crumbCount <= 4, "BreadcrumbSkeleton: crumbCount must stay bounded");
 
   return (
     <div className="flex items-center gap-2 animate-pulse">
-      <div className="h-4 w-12 rounded bg-zinc-800/70" />
-      <div className="h-4 w-3 rounded bg-zinc-900/80" />
-      <div className={`h-4 rounded bg-zinc-800/70 ${currentWidthClass}`} />
+      {Array.from({ length: crumbCount }, (_, index) => (
+        <div key={index} className="flex items-center gap-2">
+          {index > 0 && <div className="h-4 w-3 rounded bg-zinc-900/80" />}
+          <div
+            className={
+              index === crumbCount - 1
+                ? `h-4 rounded bg-zinc-800/70 ${currentWidthClass}`
+                : "h-4 w-12 rounded bg-zinc-800/70"
+            }
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -242,7 +261,7 @@ export function BrowseByStateSkeleton() {
 }
 
 export function StateHeaderSkeleton() {
-  console.assert(FEATURED_CARD_COUNT === 4, "StateHeaderSkeleton: shared card constant must remain stable");
+  console.assert(FEATURED_CARD_COUNT === 8, "StateHeaderSkeleton: shared card constant must remain stable");
   console.assert(FEATURED_CARD_COUNT > 0, "StateHeaderSkeleton: shared card constant must stay positive");
 
   return (
@@ -264,7 +283,7 @@ export function StateHeaderSkeleton() {
 
 export function StateStatsSkeleton() {
   console.assert(STATE_CITY_CARDS.length === STATE_CITY_CARD_COUNT, "StateStatsSkeleton: city card count mismatch");
-  console.assert(STATE_CITY_CARD_COUNT >= 10, "StateStatsSkeleton: city card count should reserve multiple rows");
+  console.assert(STATE_CITY_CARD_COUNT <= 500, "StateStatsSkeleton: city card count must stay bounded");
 
   return (
     <div
@@ -307,7 +326,7 @@ export function CityHeaderSkeleton() {
       aria-label="Loading city header"
       className="animate-pulse"
     >
-      <BreadcrumbSkeleton currentWidthClass="w-24" />
+      <BreadcrumbSkeleton currentWidthClass="w-24" crumbCount={3} />
       <div className="mb-6 mt-6">
         <div className="mb-1 h-8 w-80 max-w-full rounded bg-zinc-800" />
       </div>
