@@ -14,6 +14,10 @@ import { SITE_URL } from "@/lib/site";
 import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
+import {
+  StateHeaderSkeleton,
+  StateStatsSkeleton,
+} from "@/components/directory-page-skeletons";
 
 interface PageProps {
   params: Promise<{ state: string }>;
@@ -79,11 +83,11 @@ export default function StatePage({ params, searchParams }: Readonly<PageProps>)
 
   return (
     <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
-      <Suspense fallback={null}>
+      <Suspense fallback={<StateHeaderSkeleton />}>
         <StaticStateHeader params={params} />
       </Suspense>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<StateStatsSkeleton />}>
         <StaticStateStats params={params} />
       </Suspense>
 
