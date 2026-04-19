@@ -34,6 +34,15 @@ import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 import { ScrollToResults } from "@/components/scroll-to-results";
 import { toDisplayCase } from "@/lib/display-case";
 import { formatCityState } from "@/lib/format";
+import {
+  BrowseByStateSkeleton,
+  FeaturedStoresSkeleton,
+  FilterBarSkeleton,
+  GameCategoryCardsSkeleton,
+  HeroStatsSkeleton,
+  PopularCitiesSkeleton,
+  StoreTypeCardsSkeleton,
+} from "@/components/directory-page-skeletons";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -104,17 +113,17 @@ export default function HomePage({ searchParams }: PageProps) {
             <HeroSearch />
           </div>
 
-          <Suspense fallback={null}>
+          <Suspense fallback={<HeroStatsSkeleton />}>
             <HeroStatsBlock />
           </Suspense>
         </div>
       </section>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<FeaturedStoresSkeleton />}>
         <FeaturedStoresBlock />
       </Suspense>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<GameCategoryCardsSkeleton />}>
         <GameCategoryCards />
       </Suspense>
 
@@ -144,11 +153,11 @@ export default function HomePage({ searchParams }: PageProps) {
         <AffiliateDisclosure className="mt-1.5 px-1" />
       </section>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<StoreTypeCardsSkeleton />}>
         <StoreTypeCards />
       </Suspense>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<PopularCitiesSkeleton />}>
         <PopularCitiesBlock />
       </Suspense>
 
@@ -157,7 +166,7 @@ export default function HomePage({ searchParams }: PageProps) {
         <Suspense fallback={null}>
           <ScrollToResults />
         </Suspense>
-        <Suspense fallback={null}>
+        <Suspense fallback={<FilterBarSkeleton />}>
           <FilterBarWrapper />
         </Suspense>
 
@@ -171,7 +180,7 @@ export default function HomePage({ searchParams }: PageProps) {
         <AmazonShelf shelf={SHELVES["tcg-essentials"]} compact />
       </section>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<BrowseByStateSkeleton />}>
         <BrowseByStateBlock />
       </Suspense>
     </div>
