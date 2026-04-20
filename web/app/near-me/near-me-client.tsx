@@ -226,9 +226,11 @@ export default function NearMeClient(props: NearMeClientProps) {
       <div className="mb-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Near Me</h1>
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-300">
+              Search by location
+            </h2>
             <p className="text-sm text-zinc-500">
-              Find local game stores close to your location
+              Enter a city, zip code, or use precise browser location to find tabletop gaming, TCG, and hobby stores.
             </p>
           </div>
           <Select value={radius} onValueChange={handleRadiusChange}>
