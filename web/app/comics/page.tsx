@@ -18,12 +18,17 @@ import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 const CATEGORY = getCategoryRouteBySlug("comics")!;
 console.assert(CATEGORY !== null, "comics category route must exist");
 
+const COMICS_TITLE = "Comic Book Store Near Me | Comic Shops Near Me | Roll For Store";
+const COMICS_DESCRIPTION =
+  "Find a comic book store near me and compare comic shops near me with Roll For Store. Browse local comic shops, LCS favorites, graded comics, comic preservation supplies, and comic grading services.";
+const COMICS_H1 = "Comic Book Store Near Me? Browse Comic Shops Near Me";
+
 export const metadata: Metadata = {
-  title: CATEGORY.title,
-  description: CATEGORY.description,
+  title: COMICS_TITLE,
+  description: COMICS_DESCRIPTION,
   openGraph: {
-    title: CATEGORY.title,
-    description: CATEGORY.description,
+    title: COMICS_TITLE,
+    description: COMICS_DESCRIPTION,
     type: "website",
     url: `${SITE_URL}/comics`,
   },
@@ -52,31 +57,8 @@ export default function ComicsPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
       <Breadcrumb items={breadcrumbItems} />
-
-      <div className="mb-8 mt-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight">
-              {CATEGORY.label}
-            </h1>
-          </div>
-        </div>
-        <p className="text-sm text-zinc-400 max-w-2xl mt-2 leading-relaxed">
-          {CATEGORY.heroText}
-        </p>
-        <AffiliateLink
-          href={EBAY_URLS.collections.comics}
-          network="ebay"
-          placement="comics-cta"
-          className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg border border-yellow-600/30 bg-yellow-600/5 text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200"
-        >
-          Shop Comics &amp; Collectibles on eBay →
-        </AffiliateLink>
-        <AffiliateDisclosure className="mt-1.5" />
-      </div>
+      <ComicsHeroSection />
+      <ComicsHighlightsSection />
 
       <Suspense fallback={<StoreTableSkeleton />}>
         <DynamicStoreSection searchParams={searchParams} />
@@ -89,10 +71,99 @@ export default function ComicsPage({ searchParams }: PageProps) {
         />
       </div>
 
+      <ComicsClusterCopySection />
+
       <Suspense fallback={null}>
         <TopCitiesSection />
       </Suspense>
     </div>
+  );
+}
+
+function ComicsHeroSection() {
+  console.assert(CATEGORY !== null, "ComicsHeroSection: CATEGORY must be resolved");
+  console.assert(COMICS_H1.includes("Comic"), "ComicsHeroSection: heading must reference comic intent");
+
+  return (
+    <div className="mb-8 mt-6">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400">
+          <BookOpen className="w-5 h-5" />
+        </div>
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">
+            {COMICS_H1}
+          </h1>
+        </div>
+      </div>
+      <p className="text-sm text-zinc-400 max-w-3xl mt-2 leading-relaxed">
+        Find local comic shops by city and state, then compare weekly pull-list stops, back-issue rooms, and comic book stores carrying graphic novels, collectibles, and graded comics.
+      </p>
+      <p className="text-sm text-zinc-400 max-w-3xl mt-3 leading-relaxed">
+        Use this comics hub when you need a dependable LCS for new releases, comic preservation supplies, or comic grading services before you prep a convention run or a slab submission.
+      </p>
+      <AffiliateLink
+        href={EBAY_URLS.collections.comics}
+        network="ebay"
+        placement="comics-cta"
+        className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg border border-yellow-600/30 bg-yellow-600/5 text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 hover:border-yellow-500/50 transition-all duration-200"
+      >
+        Shop Comics &amp; Collectibles on eBay →
+      </AffiliateLink>
+      <AffiliateDisclosure className="mt-1.5" />
+    </div>
+  );
+}
+
+function ComicsHighlightsSection() {
+  console.assert(SHELVES["comics-storage"].links.length >= 4, "ComicsHighlightsSection: comics shelf needs at least four links");
+  console.assert(COMICS_DESCRIPTION.includes("comic grading services"), "ComicsHighlightsSection: metadata should cover grading-services intent");
+
+  return (
+    <>
+      <div className="mb-8">
+        <AmazonShelf
+          shelf={SHELVES["comics-storage"]}
+          placement="comics-above-fold-shelf"
+          variant="strip"
+        />
+      </div>
+
+      <section className="mb-8 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <h2 className="font-display text-lg font-semibold text-zinc-200">
+            Compare comic book stores before the next pull-list run
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            The best comic book stores blend weekly releases with knowledgeable staff, organized back-issue bins, and event calendars that keep an LCS anchored in its local scene. This directory helps you sort comic shops near you before you commit to a drive across town.
+          </p>
+        </article>
+        <article className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <h2 className="font-display text-lg font-semibold text-zinc-200">
+            Graded comics, comic preservation, and comic grading services
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            Serious collectors usually need more than a new-release wall. Keep long boxes, bags and boards, mylar sleeves, and slab storage close at hand, then use local comic shops to source graded comics or confirm which stores handle comic grading services and convention prep.
+          </p>
+        </article>
+      </section>
+    </>
+  );
+}
+
+function ComicsClusterCopySection() {
+  console.assert(COMICS_DESCRIPTION.includes("comic book store near me"), "ComicsClusterCopySection: metadata should cover the primary query");
+  console.assert(COMICS_DESCRIPTION.includes("comic shops near me"), "ComicsClusterCopySection: metadata should cover the secondary query");
+
+  return (
+    <section className="mt-10 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <h2 className="font-display text-lg font-semibold text-zinc-200">
+        Use local comic shops as the offline side of your collection workflow
+      </h2>
+      <p className="mt-3 max-w-4xl text-sm leading-relaxed text-zinc-400">
+        A strong LCS is where you can preview variants, talk through creator runs, and sanity-check grading decisions before you ship a key issue. Pair the directory with the comic preservation shelf above when you need supplies for short-term reading boxes, archival storage, or graded-comic handoff days.
+      </p>
+    </section>
   );
 }
 
@@ -121,7 +192,6 @@ async function DynamicStoreSection({
     state,
   });
 
-  // JSON-LD ItemList
   const MAX_JSON_LD = 25;
   const jsonLdLimit = Math.min(result.stores.length, MAX_JSON_LD);
   const itemListElements: Record<string, unknown>[] = [];
@@ -163,7 +233,7 @@ async function DynamicStoreSection({
         "@context": "https://schema.org",
         "@type": "ItemList",
         name: CATEGORY.label,
-        description: CATEGORY.description,
+        description: COMICS_DESCRIPTION,
         numberOfItems: result.total,
         itemListElement: itemListElements,
       }} />
