@@ -20,7 +20,7 @@ declare global {
 function trackAffiliateAnchor(anchor: HTMLAnchorElement) {
   const network = anchor.dataset.affiliateNetwork;
   const placement = anchor.dataset.affiliatePlacement;
-  const destinationUrl = anchor.dataset.affiliateDestinationUrl ?? anchor.href;
+  const url = anchor.dataset.affiliateDestinationUrl ?? anchor.href;
 
   console.assert(
     typeof network === "string" && network.length > 0,
@@ -47,8 +47,8 @@ function trackAffiliateAnchor(anchor: HTMLAnchorElement) {
   window.gtag("event", "affiliate_click", {
     network,
     placement,
-    destination_url: destinationUrl,
-    page: window.location.pathname,
+    url,
+    page_path: window.location.pathname,
     transport_type: "beacon",
   });
 }
