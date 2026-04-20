@@ -2,7 +2,7 @@ const FEATURED_CARD_COUNT = 8;
 const GAME_CARD_COUNT = 8;
 const STORE_TYPE_CARD_COUNT = 4;
 const POPULAR_CITY_CARD_COUNT = 12;
-const STATE_CITY_CARD_COUNT = 500;
+const STATE_CITY_SKELETON_COUNT = 6;
 const BROWSE_STATE_LINK_COUNT = 60;
 
 const FEATURED_CARDS = Array.from(
@@ -12,8 +12,8 @@ const FEATURED_CARDS = Array.from(
 const GAME_CARDS = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 const STORE_TYPE_CARDS = [0, 1, 2, 3] as const;
 const POPULAR_CITY_CARDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
-const STATE_CITY_CARDS = Array.from(
-  { length: STATE_CITY_CARD_COUNT },
+const STATE_CITY_SKELETON_CARDS = Array.from(
+  { length: STATE_CITY_SKELETON_COUNT },
   (_, index) => index
 );
 const HERO_STAT_LABEL_WIDTHS = ["w-16", "w-20", "w-24"] as const;
@@ -282,8 +282,14 @@ export function StateHeaderSkeleton() {
 }
 
 export function StateStatsSkeleton() {
-  console.assert(STATE_CITY_CARDS.length === STATE_CITY_CARD_COUNT, "StateStatsSkeleton: city card count mismatch");
-  console.assert(STATE_CITY_CARD_COUNT <= 500, "StateStatsSkeleton: city card count must stay bounded");
+  console.assert(
+    STATE_CITY_SKELETON_CARDS.length === STATE_CITY_SKELETON_COUNT,
+    "StateStatsSkeleton: city card count mismatch",
+  );
+  console.assert(
+    STATE_CITY_SKELETON_COUNT >= 6 && STATE_CITY_SKELETON_COUNT <= 10,
+    "StateStatsSkeleton: skeleton count must stay within the expected visual range",
+  );
 
   return (
     <div
@@ -300,16 +306,18 @@ export function StateStatsSkeleton() {
 
       <div className="mb-8">
         <div className="mb-4 h-6 w-40 rounded bg-zinc-800" />
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {STATE_CITY_CARDS.map((card) => (
-            <div
-              key={card}
-              className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3"
-            >
-              <div className="mb-2 h-4 w-3/4 rounded bg-zinc-800" />
-              <div className="h-3 w-1/2 rounded bg-zinc-800/70" />
-            </div>
-          ))}
+        <div className="min-h-[16rem] sm:min-h-[14rem] lg:min-h-[10rem]">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {STATE_CITY_SKELETON_CARDS.map((card) => (
+              <div
+                key={card}
+                className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+              >
+                <div className="mb-2 h-4 w-3/4 rounded bg-zinc-800" />
+                <div className="h-3 w-1/2 rounded bg-zinc-800/70" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
