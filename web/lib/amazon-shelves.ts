@@ -29,12 +29,20 @@ export interface ShelfDefinition {
   /** Short intro line shown under the heading. */
   intro: string;
   links: ShelfLink[];
+  /** Curated 4-link subset for above-fold and sidebar placements. */
+  compactLinks?: ShelfLink[];
 }
 
 const TCG_ESSENTIALS: ShelfDefinition = {
   id: "tcg-essentials",
   title: "TCG Player Essentials",
   intro: "Sleeves, deck boxes, and table gear most local game store regulars keep on hand.",
+  compactLinks: [
+    { title: "Card Sleeves (Standard)", query: "trading card sleeves standard size", blurb: "Matte and clear sleeves for MTG, Pokemon, and most TCGs." },
+    { title: "Deck Boxes", query: "trading card deck box", blurb: "Hard-shell and leatherette boxes that fit a sleeved 60+ card deck." },
+    { title: "Playmats", query: "tcg playmat 24x14", blurb: "Stitched-edge playmats sized for tournament play." },
+    { title: "Card Binders (Side-Loading)", query: "card binder side loading 9 pocket", blurb: "Protect singles in zip-up 9-pocket binders." },
+  ],
   links: [
     { title: "Card Sleeves (Standard)", query: "trading card sleeves standard size", blurb: "Matte and clear sleeves for MTG, Pokemon, and most TCGs." },
     { title: "Deck Boxes", query: "trading card deck box", blurb: "Hard-shell and leatherette boxes that fit a sleeved 60+ card deck." },
@@ -51,6 +59,12 @@ const WARHAMMER_HOBBY: ShelfDefinition = {
   id: "warhammer-hobby",
   title: "Warhammer Painter's Bench",
   intro: "Tools and consumables for Warhammer, AoS, and miniature painting hobbyists.",
+  compactLinks: [
+    { title: "Citadel Paint Sets", query: "citadel paint set", blurb: "Games Workshop's official paint pots and starter sets." },
+    { title: "Miniature Brushes", query: "miniature painting brush set", blurb: "Fine-tip synthetic and Kolinsky brushes for detail work." },
+    { title: "Warhammer Starter Sets", query: "warhammer starter set", blurb: "Starter armies, intro boxes, and first-project kits for new hobbyists." },
+    { title: "Plastic Glue", query: "plastic model cement glue", blurb: "Polystyrene cement for assembling Citadel kits." },
+  ],
   links: [
     { title: "Citadel Paint Sets", query: "citadel paint set", blurb: "Games Workshop's official paint pots and starter sets." },
     { title: "Miniature Brushes", query: "miniature painting brush set", blurb: "Fine-tip synthetic and Kolinsky brushes for detail work." },
@@ -67,6 +81,12 @@ const RETRO_GAMES: ShelfDefinition = {
   id: "retro-games",
   title: "Retro Gaming Gear",
   intro: "Maintenance and quality-of-life upgrades for vintage console collectors.",
+  compactLinks: [
+    { title: "RetroTink Upscaler", query: "retrotink upscaler", blurb: "Lag-free analog-to-HDMI upscaling for CRT-era consoles." },
+    { title: "OSSC Upscaler", query: "ossc upscaler", blurb: "Low-latency scan conversion for collectors dialing in retro display setups." },
+    { title: "Replacement Controllers", query: "retro console replacement controller", blurb: "OEM-style pads for classic consoles." },
+    { title: "Game Boy Replacement Shells", query: "game boy replacement shell", blurb: "Restore beat-up handhelds with new shells and buttons." },
+  ],
   links: [
     { title: "Cartridge Cleaning Kits", query: "retro game cartridge cleaning kit", blurb: "Bring grimy NES, SNES, and Genesis carts back to life." },
     { title: "Replacement Controllers", query: "retro console replacement controller", blurb: "OEM-style pads for classic consoles." },
@@ -82,6 +102,12 @@ const COMICS_STORAGE: ShelfDefinition = {
   id: "comics-storage",
   title: "Comic Collector Storage",
   intro: "Boxes, bags, and boards to keep your single issues collection-grade.",
+  compactLinks: [
+    { title: "Long Boxes", query: "comic book long box", blurb: "Standard cardboard long boxes (~300 count)." },
+    { title: "Bags & Boards (Current Size)", query: "current size comic bags and boards", blurb: "Acid-free bags and backer boards for modern issues." },
+    { title: "Mylar Sleeves", query: "mylar comic sleeves", blurb: "Archival mylar for keys and high-grade books." },
+    { title: "Comic Slab Storage", query: "graded comic slab storage box", blurb: "Protect CGC and CBCS slabs between submissions, shows, and moves." },
+  ],
   links: [
     { title: "Long Boxes", query: "comic book long box", blurb: "Standard cardboard long boxes (~300 count)." },
     { title: "Short Boxes", query: "comic book short box", blurb: "Easier-to-lift short boxes for active reading piles." },
@@ -109,6 +135,7 @@ export function shelfForStoreCategory(dbCategory: string | null): ShelfDefinitio
     dbCategory === null || typeof dbCategory === "string",
     "shelfForStoreCategory: dbCategory must be a string or null"
   );
+  console.assert(Object.keys(SHELVES).length === 4, "shelfForStoreCategory: expected all shelf definitions to be loaded");
 
   if (dbCategory === "comic_shop") {
     return SHELVES["comics-storage"];

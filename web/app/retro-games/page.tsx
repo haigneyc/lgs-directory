@@ -75,6 +75,14 @@ export default function RetroGamesPage({ searchParams }: PageProps) {
         <AffiliateDisclosure className="mt-1.5" />
       </div>
 
+      <div className="mb-8">
+        <AmazonShelf
+          shelf={SHELVES["retro-games"]}
+          placement="retro-games-above-fold-shelf"
+          variant="strip"
+        />
+      </div>
+
       <Suspense fallback={<StoreTableSkeleton />}>
         <DynamicStoreSection searchParams={searchParams} />
       </Suspense>

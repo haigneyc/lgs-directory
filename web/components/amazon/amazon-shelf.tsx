@@ -19,12 +19,13 @@ interface AmazonShelfProps {
   placement: string;
   /** When true, render a tighter variant suited for the homepage bottom. */
   compact?: boolean;
-  variant?: "list" | "strip";
+  variant?: "list" | "strip" | "sidebar";
 }
 
 const MAX_LINKS_FULL = 8;
 const MAX_LINKS_COMPACT = 6;
 const MAX_LINKS_STRIP = 4;
+const MAX_LINKS_SIDEBAR = 4;
 
 interface AmazonShelfBodyProps {
   shelf: ShelfDefinition;
@@ -58,7 +59,7 @@ function AmazonStripShelf({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {displayed.map((link) => {
           const href = buildAmazonSearchLink(link.query);
           console.assert(href.includes("tag=orangediscoun-20"), "AmazonStripShelf: link missing tag");
@@ -69,6 +70,63 @@ function AmazonStripShelf({
               network="amazon"
               placement={placement}
               className="group rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-yellow-500/30 hover:bg-zinc-900/70"
+            >
+              <p className="text-sm font-medium text-zinc-200 transition-colors group-hover:text-yellow-400">
+                {link.title}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                {link.blurb}
+              </p>
+              <span className="mt-3 inline-flex text-xs font-medium text-zinc-500 transition-colors group-hover:text-yellow-400">
+                Shop ↗
+              </span>
+            </AffiliateLink>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-xs italic text-zinc-500">{AMAZON_DISCLOSURE_TEXT}</p>
+    </section>
+  );
+}
+
+function AmazonSidebarShelf({
+  shelf,
+  placement,
+  displayed,
+}: AmazonShelfBodyProps) {
+  console.assert(displayed.length > 0, "AmazonSidebarShelf: displayed must not be empty");
+  console.assert(
+    typeof placement === "string" && placement.length > 0,
+    "AmazonSidebarShelf: placement must be non-empty",
+  );
+
+  return (
+    <section
+      aria-label={shelf.title}
+      className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-600/10 text-yellow-500">
+          <ShoppingBag className="h-4 w-4" />
+        </div>
+        <div>
+          <h3 className="font-display text-sm font-semibold text-zinc-200">{shelf.title}</h3>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">{shelf.intro}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        {displayed.map((link) => {
+          const href = buildAmazonSearchLink(link.query);
+          console.assert(href.includes("tag=orangediscoun-20"), "AmazonSidebarShelf: link missing tag");
+          return (
+            <AffiliateLink
+              key={link.query}
+              href={href}
+              network="amazon"
+              placement={placement}
+              className="group block rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-yellow-500/30 hover:bg-zinc-900/70"
             >
               <p className="text-sm font-medium text-zinc-200 transition-colors group-hover:text-yellow-400">
                 {link.title}
@@ -160,21 +218,31 @@ export function AmazonShelf({
   console.assert(typeof placement === "string" && placement.length > 0, "AmazonShelf: placement must be non-empty");
   console.assert(typeof compact === "boolean", "AmazonShelf: compact must be a boolean");
   console.assert(
-    variant === "list" || variant === "strip",
-    "AmazonShelf: variant must be list or strip",
+    variant === "list" || variant === "strip" || variant === "sidebar",
+    "AmazonShelf: variant must be list, strip, or sidebar",
   );
 
+  const links =
+    variant === "strip" || variant === "sidebar"
+      ? shelf.compactLinks ?? shelf.links
+      : shelf.links;
   const limit =
     variant === "strip"
       ? MAX_LINKS_STRIP
-      : compact
-        ? MAX_LINKS_COMPACT
-        : MAX_LINKS_FULL;
-  const displayed = shelf.links.slice(0, limit);
+      : variant === "sidebar"
+        ? MAX_LINKS_SIDEBAR
+        : compact
+          ? MAX_LINKS_COMPACT
+          : MAX_LINKS_FULL;
+  const displayed = links.slice(0, limit);
   console.assert(displayed.length > 0, "AmazonShelf: displayed must not be empty");
 
   if (variant === "strip") {
     return <AmazonStripShelf shelf={shelf} placement={placement} displayed={displayed} />;
+  }
+
+  if (variant === "sidebar") {
+    return <AmazonSidebarShelf shelf={shelf} placement={placement} displayed={displayed} />;
   }
 
   return <AmazonListShelf shelf={shelf} placement={placement} displayed={displayed} />;
