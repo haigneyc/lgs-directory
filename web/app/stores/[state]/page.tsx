@@ -11,11 +11,10 @@ import { Pagination } from "@/components/pagination";
 import { CityGrid } from "@/components/city-grid";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
-import { AmazonShelf } from "@/components/amazon/amazon-shelf";
-import { SHELVES } from "@/lib/amazon-shelves";
 import { MapPin } from "lucide-react";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
+import { DirectoryAffiliateSection } from "@/components/directory-affiliate-section";
 import {
   StateHeaderSkeleton,
   StateStatsSkeleton,
@@ -96,6 +95,9 @@ export default function StatePage({ params, searchParams }: Readonly<PageProps>)
       <Suspense fallback={<StoreTableSkeleton />}>
         <DynamicStoresSection params={params} searchParams={searchParams} />
       </Suspense>
+
+      <DirectoryAffiliateSection placementBase="state-directory" />
+
     </div>
   );
 }
@@ -310,14 +312,6 @@ async function DynamicStoresSection({
             total={result.total}
           />
         </Suspense>
-      </div>
-
-      <div className="mb-8">
-        <AmazonShelf
-          shelf={SHELVES["tcg-essentials"]}
-          placement="state-directory-shelf"
-          variant="strip"
-        />
       </div>
 
       <JsonLd data={jsonLdData} />

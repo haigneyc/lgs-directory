@@ -12,11 +12,10 @@ import { OnlineStoresCard } from "@/components/online-stores-card";
 import { NearbyCities } from "@/components/nearby-cities";
 import { StoreMapLazy } from "@/components/map/store-map-lazy";
 import { SITE_URL } from "@/lib/site";
-import { AmazonShelf } from "@/components/amazon/amazon-shelf";
-import { SHELVES } from "@/lib/amazon-shelves";
 import type { StoreWithDistance } from "@/lib/types";
 import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 import { CityHeaderSkeleton } from "@/components/directory-page-skeletons";
+import { DirectoryAffiliateSection } from "@/components/directory-affiliate-section";
 
 /** Upper bound on prerendered city pages — keeps build time bounded. */
 const TOP_CITIES_PRERENDER_LIMIT = 300;
@@ -107,6 +106,9 @@ export default function CityPage({ params, searchParams }: Readonly<PageProps>) 
       <Suspense fallback={<StoreTableSkeleton />}>
         <DynamicCitySection params={params} searchParams={searchParams} />
       </Suspense>
+
+      <DirectoryAffiliateSection placementBase="city-directory" />
+
     </div>
   );
 }
@@ -321,14 +323,6 @@ async function DynamicCitySection({
           <NearbyCities stateSlug={stateSlug} cities={nearbyCities} />
         </div>
       )}
-
-      <div className="mb-8">
-        <AmazonShelf
-          shelf={SHELVES["tcg-essentials"]}
-          placement="city-directory-shelf"
-          variant="strip"
-        />
-      </div>
 
       <JsonLd data={jsonLdData} />
     </>
