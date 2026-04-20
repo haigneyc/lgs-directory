@@ -556,6 +556,12 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
             </div>
           )}
 
+          <AmazonShelf
+            shelf={shelfForStoreCategory(categories[0] ?? null)}
+            placement="store-sidebar-shelf"
+            variant="sidebar"
+          />
+
           {/* Google Maps link */}
           {enrichment?.photo_refs !== null && enrichment?.photo_refs !== undefined && enrichment.photo_refs.length > 0 && store.google_place_id && (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
