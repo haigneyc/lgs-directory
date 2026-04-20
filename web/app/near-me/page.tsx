@@ -28,14 +28,14 @@ import { toDisplayCase } from "@/lib/display-case";
  */
 
 export const metadata: Metadata = {
-  title: "Tabletop Gaming Stores Near Me | Roll For Store",
+  title: "Game Stores Near Me — Tabletop, TCG, Warhammer & Comics",
   description:
-    "Find tabletop gaming stores, TCG stores, and miniatures shops near you. Browse local game stores by distance with hours, phone, and directions.",
+    "Find game stores near you. Browse 6,000+ local TCG shops, Warhammer stores, comic shops, and tabletop gaming destinations by distance with hours and directions.",
   alternates: { canonical: `${SITE_URL}/near-me` },
   openGraph: {
-    title: "Tabletop Gaming Stores Near Me | Roll For Store",
+    title: "Game Stores Near Me — Tabletop, TCG, Warhammer & Comics",
     description:
-      "Find tabletop gaming stores, TCG stores, and miniatures shops near you.",
+      "Find game stores near you. Browse 6,000+ local TCG shops, Warhammer stores, comic shops, and tabletop gaming destinations by distance with hours and directions.",
     type: "website",
     url: `${SITE_URL}/near-me`,
     siteName: "Roll For Store",
@@ -117,7 +117,7 @@ export default function NearMePage() {
       <Breadcrumb
         items={[
           { name: "Home", href: "/" },
-          { name: "Near Me", href: "/near-me" },
+          { name: "Game Stores Near Me", href: "/near-me" },
         ]}
       />
       <div className="mb-6 mt-6">
@@ -140,6 +140,24 @@ export default function NearMePage() {
           miniatures shop with Warhammer and painting supplies — Roll For Store
           shows you every tabletop gaming destination in your area.
         </p>
+        <section className="mt-4 max-w-2xl space-y-4 text-sm leading-relaxed text-zinc-400">
+          <p>
+            Roll For Store indexes 6,000+ local game stores across the United States —
+            tabletop gaming shops, trading card game stores, Warhammer and miniatures
+            retailers, comic book stores, and retro video game shops. Every listing
+            links to the store&apos;s hours, phone, website, and location so you can plan a
+            visit.
+          </p>
+          <p>
+            Common searches that land here: <strong>tcg stores near me</strong>,{" "}
+            <strong>warhammer stores near me</strong>,{" "}
+            <strong>magic the gathering stores near me</strong>,{" "}
+            <strong>pokemon cards near me</strong>,{" "}
+            <strong>comic book shops near me</strong>, and{" "}
+            <strong>board game cafes near me</strong>. Use the search below to filter
+            to your city, or browse by state from the footer.
+          </p>
+        </section>
       </div>
 
       <Suspense fallback={<NearbySkeleton />}>
@@ -178,16 +196,44 @@ async function NearbyStoresList() {
     itemListElements.push({
       "@type": "ListItem",
       position: i + 1,
-      url: `${SITE_URL}${storeHref(store)}`,
-      name: toDisplayCase(store.name),
+      item: {
+        "@type": "LocalBusiness",
+        name: toDisplayCase(store.name),
+        url: `${SITE_URL}${storeHref(store)}`,
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: store.address.street,
+          addressLocality: store.address.city,
+          addressRegion: store.address.state,
+          postalCode: store.address.zip_code,
+        },
+        ...(store.latitude !== null && store.longitude !== null
+          ? {
+              geo: {
+                "@type": "GeoCoordinates",
+                latitude: store.latitude,
+                longitude: store.longitude,
+              },
+            }
+          : {}),
+      },
     });
   }
   const jsonLdData: Record<string, unknown> = {
     "@context": "https://schema.org",
-    "@type": "ItemList",
+    "@type": "CollectionPage",
     name: "Game Stores Near Me",
-    numberOfItems: itemListElements.length,
-    itemListElement: itemListElements,
+    description:
+      "Local tabletop gaming, TCG, Warhammer, and comic book stores across the United States.",
+    url: `${SITE_URL}/near-me`,
+    about: { "@type": "Thing", name: "Local game stores" },
+    keywords:
+      "game stores near me, tcg stores near me, warhammer stores near me, comic book shops near me, pokemon cards near me, tabletop gaming",
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: itemListElements.length,
+      itemListElement: itemListElements,
+    },
   };
 
   return (
