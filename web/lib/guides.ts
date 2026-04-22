@@ -72,9 +72,9 @@ export interface GuideEntry {
   Component: ComponentType;
 }
 
-import TestGuide, {
-  meta as testGuideMeta,
-} from "@/components/guides/test-guide";
+import LargeTcgCollectionStorage, {
+  meta as largeTcgCollectionStorageMeta,
+} from "@/components/guides/large-tcg-collection-storage";
 
 /**
  * All registered guide modules. New guides land here. The order in this
@@ -82,7 +82,10 @@ import TestGuide, {
  * tiebreaker when publish dates match.
  */
 const GUIDES_MODULES: readonly GuideEntry[] = [
-  { meta: testGuideMeta, Component: TestGuide },
+  {
+    meta: largeTcgCollectionStorageMeta,
+    Component: LargeTcgCollectionStorage,
+  },
 ] as const;
 
 /**
