@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 import { SITE_URL } from "@/lib/site";
 import { stateToSlug, cityToSlug } from "@/lib/slugs";
+import { getPublishedGuides } from "@/lib/guides";
 
 const BASE_URL = SITE_URL;
 const MAX_SITEMAP_ENTRIES = 50000;
@@ -27,6 +28,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.3,
     changeFrequency: "yearly",
   });
+
+  // 2a. Guides hub + each published (non-draft) guide post. Driven by
+  // the TS registry in ``lib/guides.ts`` so sitemap, index, and route
+  // handler all agree on which slugs are live.
+  entries.push({
+    url: `${BASE_URL}/guides`,
+    priority: 0.7,
+    changeFrequency: "weekly",
+  });
+
+  const guides = getPublishedGuides();
+  console.assert(Array.isArray(guides), "sitemap: guides must be an array");
+  const guideLimit = Math.min(guides.length, MAX_SITEMAP_ENTRIES - entries.length);
+  for (let i = 0; i < guideLimit; i++) {
+    const entry = guides[i];
+    console.assert(
+      typeof entry.meta.slug === "string" && entry.meta.slug.length > 0,
+      "sitemap: guide slug must be non-empty",
+    );
+    entries.push({
+      url: `${BASE_URL}/guides/${entry.meta.slug}`,
+      lastModified: entry.meta.updatedAt ?? entry.meta.publishedAt,
+      priority: 0.7,
+      changeFrequency: "monthly",
+    });
+  }
 
   // 3. Category pages (comics, retro-games, warhammer)
   const categoryPaths = ["/comics", "/retro-games", "/warhammer"];
