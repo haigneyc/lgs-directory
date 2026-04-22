@@ -143,6 +143,21 @@
   }
 }
 
+/*
+ * Contain wide tables inside prose-rendered content (e.g. /guides/*)
+ * in a horizontal scroll container so they never push the page into
+ * horizontal scroll on mobile. Dash verified 2026-04-21 that the
+ * MORCCO product-comparison table (451px) and SWU deck-archetype table
+ * (376px) overflowed a 375px viewport. Using `:where()` keeps the
+ * selector at .prose specificity (0,1,0) so guide authors can opt out
+ * per-table with `not-prose` without !important.
+ */
+.prose :where(table):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Subtle parchment noise texture overlay for hero sections */
 .parchment-texture::before {
   content: "";
