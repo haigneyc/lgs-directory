@@ -223,7 +223,17 @@ export default async function GuideDetailPage({ params }: PageProps) {
         <FTCDisclosure campaign={meta.disclosure} />
       )}
 
-      <div className="prose prose-invert max-w-none">
+      {/*
+       * `prose-invert` flips the default light palette to a dark-mode
+       * palette (white text on dark bg). `prose-lg` bumps body copy to
+       * 18px / 1.78 line-height -- matches the long-form-article rhythm
+       * Chris uses elsewhere on the site. The `prose-a:*` overrides
+       * make affiliate anchors visibly distinct from body copy: the
+       * default `prose-invert` link color is too close to body text on
+       * `bg-zinc-950`, which made the MORCCO affiliate link disappear
+       * entirely (Dash diagnosis 2026-04-21).
+       */}
+      <div className="prose prose-invert prose-lg max-w-none prose-a:text-amber-300 prose-a:font-medium prose-a:underline prose-a:decoration-amber-500/40 prose-a:underline-offset-2 hover:prose-a:text-amber-200 prose-a:transition-colors">
         <Component />
       </div>
 
