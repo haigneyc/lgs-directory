@@ -75,6 +75,9 @@ export interface GuideEntry {
 import LargeTcgCollectionStorage, {
   meta as largeTcgCollectionStorageMeta,
 } from "@/components/guides/large-tcg-collection-storage";
+import StarWarsUnlimitedBeginner, {
+  meta as starWarsUnlimitedBeginnerMeta,
+} from "@/components/guides/star-wars-unlimited-beginner";
 
 /**
  * All registered guide modules. New guides land here. The order in this
@@ -85,6 +88,10 @@ const GUIDES_MODULES: readonly GuideEntry[] = [
   {
     meta: largeTcgCollectionStorageMeta,
     Component: LargeTcgCollectionStorage,
+  },
+  {
+    meta: starWarsUnlimitedBeginnerMeta,
+    Component: StarWarsUnlimitedBeginner,
   },
 ] as const;
 
