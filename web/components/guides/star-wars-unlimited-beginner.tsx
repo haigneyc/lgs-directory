@@ -44,12 +44,12 @@ export default function StarWarsUnlimitedBeginner() {
         May the Fourth is a manufactured holiday, but it&apos;s
         also the one day each year when every TCG-adjacent
         retailer points at Star Wars Unlimited and says &quot;try
-        this.&quot; By 2026 the launch rush is over. The first
-        big rotation hasn&apos;t hit. The format has settled into
-        recognizable archetypes, booster boxes are priced
-        reasonably for a still-growing game, and the Intro Battle
-        line is the cleanest on-ramp Fantasy Flight (now under
-        Asmodee) has ever shipped for a TCG.
+        this.&quot; By 2026 the launch rush is over. The format
+        is rotation-free for now, has settled into recognizable
+        archetypes, booster boxes are priced reasonably for a
+        still-growing game, and the Intro Battle line is the
+        cleanest on-ramp Fantasy Flight (now under Asmodee) has
+        ever shipped for a TCG.
       </p>
       <p>
         This guide is aimed at MTG and Pokemon players who are
@@ -95,7 +95,7 @@ export default function StarWarsUnlimitedBeginner() {
         reference lives at{" "}
         <a
           href="https://starwarsunlimited.com"
-          rel="noopener"
+          rel="noopener noreferrer"
           target="_blank"
         >
           starwarsunlimited.com

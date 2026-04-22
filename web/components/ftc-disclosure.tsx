@@ -26,32 +26,19 @@ const DISCLOSURE_COPY = {
 
 export type FTCDisclosureCampaign = keyof typeof DISCLOSURE_COPY;
 
-const VARIANTS = ["banner", "inline"] as const;
-export type FTCDisclosureVariant = (typeof VARIANTS)[number];
-
 interface FTCDisclosureProps {
   campaign: FTCDisclosureCampaign;
-  variant?: FTCDisclosureVariant;
 }
 
 const BANNER_CLASSES =
   "not-prose mb-6 rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100";
-const INLINE_CLASSES =
-  "not-prose my-4 rounded-md border-l-4 border-yellow-500 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-100";
 
 const DISCLOSURE_LABEL = "Disclosure";
 
-export function FTCDisclosure({
-  campaign,
-  variant = "banner",
-}: FTCDisclosureProps) {
+export function FTCDisclosure({ campaign }: FTCDisclosureProps) {
   console.assert(
     typeof campaign === "string" && campaign in DISCLOSURE_COPY,
     "FTCDisclosure: campaign must be a known disclosure key",
-  );
-  console.assert(
-    VARIANTS.includes(variant),
-    "FTCDisclosure: variant must be banner or inline",
   );
 
   const copy = DISCLOSURE_COPY[campaign];
@@ -60,13 +47,11 @@ export function FTCDisclosure({
     "FTCDisclosure: resolved copy must be a non-empty string",
   );
 
-  const classes = variant === "banner" ? BANNER_CLASSES : INLINE_CLASSES;
-
   return (
     <aside
       role="note"
       aria-label="Affiliate disclosure"
-      className={classes}
+      className={BANNER_CLASSES}
       data-ftc-disclosure={campaign}
     >
       <strong className="mr-2 font-semibold uppercase tracking-wide text-yellow-300">

@@ -78,8 +78,9 @@ export default function LargeTcgCollectionStorage() {
         </li>
         <li>
           <strong>Budget vs. longevity.</strong> Free cardboard
-          shoeboxes last about two years of heavy use before the
-          handles tear. A $40 PU-leather trunk lasts three to five.
+          shoeboxes eventually give up at the handles and seams
+          under heavy use. A $40 PU-leather trunk holds up over
+          years of the same routine.
         </li>
       </ul>
       <p>
@@ -140,13 +141,6 @@ export default function LargeTcgCollectionStorage() {
             <td>Cardboard, no lid lock</td>
             <td>None</td>
             <td>~$8</td>
-          </tr>
-          <tr>
-            <td>Ultra Pro Satin Tower + shoeboxes (combo)</td>
-            <td>~2,500</td>
-            <td>Plastic, modular</td>
-            <td>Limited</td>
-            <td>~$30 total</td>
           </tr>
           <tr>
             <td>
@@ -255,19 +249,20 @@ export default function LargeTcgCollectionStorage() {
 
       <h2>Quick FAQ</h2>
       <p>
-        <strong>Do magnetic lids damage cards?</strong> No. The
-        magnets sit inside the lid frame, not over the card stack.
-        Manufacturers state this explicitly for storage-scale
-        products, and there&apos;s no documented case of
-        magnetic-lid storage warping or demagnetizing trading
-        cards.
+        <strong>Do magnetic lids damage cards?</strong>{" "}
+        Storage-scale magnetic lids place the magnets in the lid
+        frame, not over the card stack. The magnetic field at the
+        card surface is weak, and trading cards aren&apos;t
+        magnetic media. If you want extra assurance on chase
+        rares, top-load or sleeve them regardless of storage
+        format.
       </p>
       <p>
         <strong>How long does a PU-leather trunk last?</strong>{" "}
-        Typical lifespan under regular use is three to five years
-        before the corners start to crack or the lining separates.
-        Cardboard shoeboxes last about a third as long under the
-        same use.
+        Durable over years of regular use &mdash; the failure
+        points to watch are corner seams and the lining along
+        hinges, both of which show wear long before they actually
+        fail.
       </p>
       <p>
         <strong>Can I store sleeved cards?</strong> Yes. Capacity

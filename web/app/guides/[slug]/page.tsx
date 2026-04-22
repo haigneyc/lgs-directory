@@ -182,7 +182,6 @@ export default async function GuideDetailPage({ params }: PageProps) {
   }
 
   const { meta, Component } = entry;
-  const canonical = guideCanonicalUrl(meta.slug);
   const showUpdated =
     typeof meta.updatedAt === "string" && meta.updatedAt !== meta.publishedAt;
 
@@ -221,7 +220,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
       </header>
 
       {meta.disclosure !== undefined && (
-        <FTCDisclosure campaign={meta.disclosure} variant="banner" />
+        <FTCDisclosure campaign={meta.disclosure} />
       )}
 
       <div className="prose prose-invert max-w-none">
@@ -229,7 +228,6 @@ export default async function GuideDetailPage({ params }: PageProps) {
       </div>
 
       <JsonLd data={buildArticleJsonLd(entry)} />
-      <link rel="canonical" href={canonical} />
     </article>
   );
 }

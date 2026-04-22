@@ -1,5 +1,11 @@
 import type { ComponentType } from "react";
 import type { FTCDisclosureCampaign } from "@/components/ftc-disclosure";
+import LargeTcgCollectionStorage, {
+  meta as largeTcgCollectionStorageMeta,
+} from "@/components/guides/large-tcg-collection-storage";
+import StarWarsUnlimitedBeginner, {
+  meta as starWarsUnlimitedBeginnerMeta,
+} from "@/components/guides/star-wars-unlimited-beginner";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -71,13 +77,6 @@ export interface GuideEntry {
   meta: GuideMeta;
   Component: ComponentType;
 }
-
-import LargeTcgCollectionStorage, {
-  meta as largeTcgCollectionStorageMeta,
-} from "@/components/guides/large-tcg-collection-storage";
-import StarWarsUnlimitedBeginner, {
-  meta as starWarsUnlimitedBeginnerMeta,
-} from "@/components/guides/star-wars-unlimited-beginner";
 
 /**
  * All registered guide modules. New guides land here. The order in this
