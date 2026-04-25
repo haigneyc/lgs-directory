@@ -26,6 +26,22 @@ export const meta: GuideMeta = {
 const MORCCO_HREF =
   "https://www.amazon.com/dp/B0F1Y5NCSV?ref=t_ac_view_request_product_image&campaignId=amzn1.campaign.3PF5RRYJY05W7&linkCode=tr1&tag=orangediscoun-20&linkId=amzn1.campaign.3PF5RRYJY05W7_1776824016325";
 
+/**
+ * Standard Amazon Associates URLs for the three non-featured
+ * comparison rows. Distinct ``data-affiliate-placement`` values let
+ * GA4 separate compare-table clicks from the featured-row click.
+ * ASINs come from current public Amazon listings (BCW shoebox
+ * cardboard 1-pack, Ultra Pro Satin Tower black, BCW Super Monster
+ * cardboard 5000-count 1-pack); capacity / material / price columns
+ * mirror what those listings publish.
+ */
+const BCW_SHOEBOX_HREF =
+  "https://www.amazon.com/dp/B00GY0D5CK?tag=orangediscoun-20";
+const ULTRA_PRO_SATIN_TOWER_HREF =
+  "https://www.amazon.com/dp/B00FRIE76I?tag=orangediscoun-20";
+const BCW_SUPER_MONSTER_HREF =
+  "https://www.amazon.com/dp/B000K41E7E?tag=orangediscoun-20";
+
 export default function LargeTcgCollectionStorage() {
   console.assert(
     meta.slug === "large-tcg-collection-storage",
@@ -136,11 +152,39 @@ export default function LargeTcgCollectionStorage() {
         </thead>
         <tbody>
           <tr>
-            <td>BCW 1600-count shoebox</td>
+            <td>
+              <a
+                href={BCW_SHOEBOX_HREF}
+                data-affiliate-network="amazon"
+                data-affiliate-placement="guide-morcco-storage-compare-bcw"
+                rel="sponsored noopener"
+                target="_blank"
+              >
+                BCW 1600-count shoebox
+              </a>
+            </td>
             <td>~1,600</td>
             <td>Cardboard, no lid lock</td>
             <td>None</td>
             <td>~$8</td>
+          </tr>
+          <tr>
+            <td>
+              <a
+                href={ULTRA_PRO_SATIN_TOWER_HREF}
+                data-affiliate-network="amazon"
+                data-affiliate-placement="guide-morcco-storage-compare-ultrapro"
+                rel="sponsored noopener"
+                target="_blank"
+              >
+                Ultra Pro Satin Tower
+              </a>{" "}
+              + shoeboxes (combo)
+            </td>
+            <td>~2,500 (100-card tower + ~1,600 shoebox)</td>
+            <td>Plastic deck box + cardboard</td>
+            <td>Deck box only</td>
+            <td>~$30 total</td>
           </tr>
           <tr>
             <td>
@@ -163,7 +207,17 @@ export default function LargeTcgCollectionStorage() {
             <td>$39.89</td>
           </tr>
           <tr>
-            <td>BCW super-monster storage box</td>
+            <td>
+              <a
+                href={BCW_SUPER_MONSTER_HREF}
+                data-affiliate-network="amazon"
+                data-affiliate-placement="guide-morcco-storage-compare-bcw-supermonster"
+                rel="sponsored noopener"
+                target="_blank"
+              >
+                BCW super-monster storage box
+              </a>
+            </td>
             <td>~5,000</td>
             <td>Cardboard, reinforced</td>
             <td>None</td>
@@ -171,6 +225,14 @@ export default function LargeTcgCollectionStorage() {
           </tr>
         </tbody>
       </table>
+      <p>
+        The Ultra Pro Satin Tower is a deck box, not a bulk
+        storage unit on its own &mdash; the combo row pairs it
+        with a BCW shoebox for the bulk and uses the tower as
+        the portable top-deck/tournament-deck home. Treat it as
+        two products for two jobs, not one product doing
+        everything.
+      </p>
       <p>
         The MORCCO trunk&apos;s published spec sheet lists 3,900+
         card capacity, waterproof PU-leather exterior, a
@@ -285,6 +347,11 @@ export default function LargeTcgCollectionStorage() {
         <Link href="/near-me">store directory</Link> are the
         fastest way to find a retailer near you who stocks this
         stuff.
+      </p>
+
+      <p className="text-sm italic text-zinc-500">
+        As an Amazon Associate rollforstore.com earns from
+        qualifying purchases. This post contains affiliate links.
       </p>
     </>
   );
