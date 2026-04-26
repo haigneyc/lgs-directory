@@ -8,6 +8,11 @@ export const STORE_STATUSES = [
   "active",
   "unresponsive",
   "closed",
+  // OSM-state ingest writes new low-confidence rows as ``pending_review``.
+  // Hidden from public list pages, sitemap, and noindexed at the
+  // detail page until a content scrape promotes them. See
+  // src/lgs_directory/discovery/ingest_osm.py.
+  "pending_review",
 ] as const;
 export type StoreStatus = (typeof STORE_STATUSES)[number];
 
@@ -20,6 +25,7 @@ export const DISCOVERY_SOURCES = [
   "comicbookstores",
   "league_comic_geeks",
   "video_game_sage",
+  "osm_overpass",
 ] as const;
 export type DiscoverySource = (typeof DISCOVERY_SOURCES)[number];
 

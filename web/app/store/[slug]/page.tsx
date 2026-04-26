@@ -185,6 +185,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   console.assert(description.length <= META_DESCRIPTION_MAX, "generateMetadata: description exceeds max length");
 
   const thin = isThinStorePage(store, enrichment);
+  // OSM-state discovery may insert a row as ``pending_review`` so a
+  // human can confirm it before exposing it on the public site. The
+  // city/state index pages already filter the status out, but a row's
+  // canonical slug URL is still resolvable directly. Force noindex
+  // (still ``follow``) so a pending_review row never accumulates SERP
+  // signal before Chris/Vera promotes it to ``candidate``.
+  const isPendingReview = store.status === "pending_review";
 
   return {
     // Use `absolute` so the root layout's "%s | Roll For Store" template
@@ -203,7 +210,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // keeps link equity flowing to parent city/state pages. As soon as
     // any qualifying field (phone, hours, or any presence) is
     // populated, the page automatically becomes indexable again.
-    robots: thin
+    robots: thin || isPendingReview
       ? { index: false, follow: true }
       : { index: true, follow: true },
     // Explicit per-store Open Graph overrides. The root layout sets

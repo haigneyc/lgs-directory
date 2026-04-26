@@ -13,6 +13,11 @@ class StoreStatus(StrEnum):
     ACTIVE = "active"
     UNRESPONSIVE = "unresponsive"
     CLOSED = "closed"
+    # Low-confidence rows discovered by the OSM-state pipeline. Hidden
+    # from the public site (sitemap, list pages, store-detail noindex)
+    # until a content scrape promotes them to CANDIDATE. See
+    # discovery/ingest_osm.py and web/app/store/[slug]/page.tsx.
+    PENDING_REVIEW = "pending_review"
 
 
 class StoreCategory(StrEnum):
@@ -35,6 +40,7 @@ class DiscoverySource(StrEnum):
     COMICBOOKSTORES = "comicbookstores"
     LEAGUE_COMIC_GEEKS = "league_comic_geeks"
     VIDEO_GAME_SAGE = "video_game_sage"
+    OSM_OVERPASS = "osm_overpass"
 
 
 class WpnLevel(StrEnum):

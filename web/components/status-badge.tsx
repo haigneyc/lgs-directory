@@ -32,6 +32,11 @@ const statusConfig: Record<StoreStatus, { label: string; color: string; descript
     color: "bg-red-500/15 text-red-400 border-red-500/30",
     description: "Permanently closed",
   },
+  pending_review: {
+    label: "Pending Review",
+    color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    description: "Discovered via OSM, awaiting manual confirmation",
+  },
 };
 
 const wpnConfig: Record<WpnLevel, { color: string; description: string }> = {

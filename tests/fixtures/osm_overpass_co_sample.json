@@ -1,0 +1,103 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API recorded fixture (synthetic, Colorado)",
+  "elements": [
+    {
+      "type": "node",
+      "id": 100001,
+      "lat": 39.7392,
+      "lon": -104.9903,
+      "tags": {
+        "name": "Mile High Cards",
+        "shop": "games",
+        "addr:street": "1500 Larimer St",
+        "addr:city": "Denver",
+        "addr:state": "CO",
+        "addr:postcode": "80202",
+        "phone": "+1 303-555-0100",
+        "website": "https://milehighcards.example"
+      }
+    },
+    {
+      "type": "node",
+      "id": 100002,
+      "lat": 40.0150,
+      "lon": -105.2705,
+      "tags": {
+        "name": "Black Knight Wargaming",
+        "shop": "hobby",
+        "addr:street": "200 Pearl St",
+        "addr:city": "Boulder",
+        "addr:state": "CO",
+        "addr:postcode": "80302",
+        "phone": "+1 303-555-0150",
+        "website": "https://blackknight.example"
+      }
+    },
+    {
+      "type": "node",
+      "id": 100003,
+      "lat": 38.8339,
+      "lon": -104.8214,
+      "tags": {
+        "name": "Bookworm Comics",
+        "shop": "comics",
+        "addr:street": "10 Tejon St",
+        "addr:city": "Colorado Springs",
+        "addr:state": "CO",
+        "addr:postcode": "80903",
+        "phone": "+1 719-555-0123"
+      }
+    },
+    {
+      "type": "way",
+      "id": 100004,
+      "center": {"lat": 39.5501, "lon": -105.7821},
+      "tags": {
+        "name": "Mountain Toys & Trains",
+        "shop": "toys",
+        "addr:street": "5 Bridge St",
+        "addr:city": "Idaho Springs",
+        "addr:state": "CO",
+        "addr:postcode": "80452"
+      }
+    },
+    {
+      "type": "node",
+      "id": 100005,
+      "lat": 39.7000,
+      "lon": -105.0810,
+      "tags": {
+        "name": "GameStop #4321",
+        "shop": "video_games",
+        "addr:street": "9000 Colfax Ave",
+        "addr:city": "Lakewood",
+        "addr:state": "CO",
+        "addr:postcode": "80215"
+      }
+    },
+    {
+      "type": "node",
+      "id": 100006,
+      "lat": 39.6132,
+      "lon": -106.0376,
+      "tags": {
+        "name": "Knit & Purl",
+        "shop": "hobby",
+        "addr:street": "12 Riverwalk",
+        "addr:city": "Edwards",
+        "addr:state": "CO",
+        "addr:postcode": "81632"
+      }
+    },
+    {
+      "type": "node",
+      "id": 100007,
+      "lat": 39.0000,
+      "lon": -104.7000,
+      "tags": {
+        "shop": "games"
+      }
+    }
+  ]
+}

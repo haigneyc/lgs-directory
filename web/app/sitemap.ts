@@ -67,11 +67,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 3. State pages
+  // 3. State pages.
+  // OSM-state ingest writes some rows as ``status = 'pending_review'``
+  // — these must stay out of the sitemap until a content scrape
+  // promotes them. Excluding the status here mirrors the
+  // ``status IN ('active','verified','candidate')`` allowlist used by
+  // ``web/lib/queries.ts`` for every public list query.
   const stateRows = await query<{ state: string }>(
     `SELECT DISTINCT address->>'state' AS state
      FROM stores
      WHERE address->>'state' IS NOT NULL
+       AND status IN ('active', 'verified', 'candidate')
      ORDER BY state`
   );
 
@@ -88,12 +94,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 4. City pages (2+ stores)
+  // 4. City pages (2+ stores). Same status allowlist as state rows so
+  // a city that only contains pending_review rows does not appear
+  // (the city page itself would render empty).
   const cityRows = await query<{ state: string; city: string }>(
     `SELECT address->>'state' AS state, address->>'city' AS city
      FROM stores
      WHERE address->>'state' IS NOT NULL
        AND address->>'city' IS NOT NULL
+       AND status IN ('active', 'verified', 'candidate')
      GROUP BY address->>'state', address->>'city'
      HAVING COUNT(*) >= 2
      ORDER BY state, city`
@@ -116,9 +125,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 5. Store detail pages -- prefer the human-readable slug URL added
   // for Vera Rec 3. Rows that have not yet been backfilled fall back to
   // the legacy UUID URL, which still resolves (via 301) at the same
-  // ``/store/[slug]`` route.
+  // ``/store/[slug]`` route. PENDING_REVIEW rows are excluded so OSM
+  // discoveries do not leak into the sitemap before review.
   const storeRows = await query<{ id: string; slug: string | null }>(
-    `SELECT id, slug FROM stores ORDER BY id`
+    `SELECT id, slug FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')
+     ORDER BY id`
   );
 
   console.assert(Array.isArray(storeRows), "sitemap: storeRows must be an array");

@@ -739,3 +739,226 @@ def retro_games(
             console.print(f"  - {detail}")
         if report.errors > 20:
             console.print(f"  ... and {report.errors - 20} more")
+
+
+# ---------------------------------------------------------------------------
+# OSM-state discovery (kumi Overpass mirror, per-state cadence)
+# ---------------------------------------------------------------------------
+
+
+@discover.command(name="osm-state")
+@click.option(
+    "--state",
+    type=str,
+    default=None,
+    help="Process a single 2-letter US state code (e.g. CO).",
+)
+@click.option(
+    "--next",
+    "use_next",
+    is_flag=True,
+    default=False,
+    help="Read the rotation cursor and process the next state, then advance.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Fetch + classify but do not write to the database.",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Print per-candidate decisions to stderr.",
+)
+@click.option(
+    "--max-candidates",
+    type=int,
+    default=None,
+    help="Defensive cap on processed candidates (testing only).",
+)
+def osm_state(
+    state: str | None,
+    use_next: bool,
+    dry_run: bool,
+    verbose: bool,
+    max_candidates: int | None,
+) -> None:
+    """Discover LGS via OpenStreetMap Overpass for one US state."""
+    from lgs_directory.discovery.ingest_osm import ingest_osm_state
+    from lgs_directory.discovery.osm_overpass import OverpassClient
+    from lgs_directory.discovery.osm_state_queue import (
+        advance_cursor,
+        normalize_state_code,
+        peek_next_state,
+    )
+
+    if verbose:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    if state is None and not use_next:
+        console.print("[red]One of --state or --next is required[/red]")
+        raise SystemExit(1)
+    if state is not None and use_next:
+        console.print("[red]--state and --next are mutually exclusive[/red]")
+        raise SystemExit(1)
+
+    if use_next:
+        target_state = peek_next_state()
+        console.print(
+            f"[dim]Cursor head: [/dim]"
+            f"[bold]{target_state}[/bold]"
+            f"[dim] (use --state to override)[/dim]"
+        )
+    else:
+        assert state is not None
+        try:
+            target_state = normalize_state_code(state)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise SystemExit(1) from exc
+
+    console.print(f"Fetching OSM Overpass for state=[bold]{target_state}[/bold]...")
+    client = OverpassClient()
+    try:
+        raw_places = client.fetch_state(target_state)
+    finally:
+        client.close()
+
+    fetch_stats = client.last_fetch_stats
+    if max_candidates is not None and max_candidates >= 0:
+        raw_places = raw_places[:max_candidates]
+
+    console.print(
+        f"  Overpass elapsed: {fetch_stats.elapsed_secs:.2f}s "
+        f"(fallback={'yes' if fetch_stats.fallback_used else 'no'})"
+    )
+    console.print(
+        f"  Raw elements: {fetch_stats.raw_elements}, "
+        f"parsed candidates: {fetch_stats.parsed}, "
+        f"skipped no-name: {fetch_stats.skipped_no_name}"
+    )
+
+    if dry_run:
+        with get_session() as session:
+            report = ingest_osm_state(
+                target_state, raw_places, session, dry_run=True,
+            )
+            session.rollback()
+    else:
+        with get_session() as session:
+            report = ingest_osm_state(
+                target_state, raw_places, session, dry_run=False,
+            )
+            session.commit()
+
+    table = Table(title=f"OSM[{target_state}] Ingest Summary")
+    table.add_column("Metric")
+    table.add_column("Count", justify="right")
+    table.add_row("Fetched", str(report.fetched))
+    table.add_row("AUTO_ACCEPT", str(report.auto_accept))
+    table.add_row("CANDIDATE_QUEUE", str(report.candidate_queue))
+    table.add_row("AUTO_REJECT", str(report.auto_reject))
+    table.add_row("Inserted as candidate", str(report.inserted_candidate))
+    table.add_row("Inserted as pending_review", str(report.inserted_pending_review))
+    table.add_row("Augmented existing", str(report.augmented_existing))
+    table.add_row("Match (no change)", str(report.skipped_no_change))
+    table.add_row("Skipped (no address)", str(report.skipped_no_address))
+    table.add_row("Errors", str(report.errors))
+    console.print(table)
+
+    if dry_run:
+        console.print("[yellow]Dry run — no DB writes.[/yellow]")
+    else:
+        if use_next:
+            new_cursor = advance_cursor(target_state)
+            next_state = peek_next_state()
+            console.print(
+                f"[green]Cursor advanced[/green]: "
+                f"index={new_cursor.next_index} next={next_state}"
+            )
+
+    if verbose and report.sample_decisions:
+        console.print("\n[bold]Sample decisions[/bold]")
+        sample_cap = min(len(report.sample_decisions), 200)
+        for i in range(sample_cap):
+            console.print(f"  {report.sample_decisions[i]}")
+
+    # Advisory anomaly threshold (per Chris's decision: advisory only).
+    if report.fetched >= 50:
+        accept_rate = report.auto_accept / report.fetched
+        reject_rate = report.auto_reject / report.fetched
+        if accept_rate < 0.20:
+            console.print(
+                f"[yellow]ADVISORY: low AUTO_ACCEPT rate ({accept_rate:.1%}) — "
+                "filter may be too strict.[/yellow]"
+            )
+        if reject_rate > 0.70:
+            console.print(
+                f"[yellow]ADVISORY: high AUTO_REJECT rate ({reject_rate:.1%}) — "
+                "tag set may be too permissive.[/yellow]"
+            )
+
+    if report.errors > 0:
+        console.print(f"\n[yellow]Errors ({report.errors}):[/yellow]")
+        cap = min(report.errors, 20)
+        for i in range(cap):
+            console.print(f"  - {report.error_details[i]}")
+
+
+@discover.command(name="review-queue")
+@click.option(
+    "--limit",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Max number of pending_review stores to show.",
+)
+def review_queue(limit: int) -> None:
+    """List PENDING_REVIEW stores for manual promotion / rejection."""
+    from lgs_directory.discovery.ingest_osm import (
+        find_osm_external_ref,
+        list_pending_review_stores,
+    )
+
+    if limit <= 0:
+        console.print("[red]--limit must be a positive integer[/red]")
+        raise SystemExit(1)
+
+    bounded_limit = min(limit, 1000)
+    with get_session() as session:
+        stores = list_pending_review_stores(session, limit=bounded_limit)
+        if not stores:
+            console.print("[green]No pending_review stores.[/green]")
+            return
+
+        table = Table(title=f"Pending Review Queue (showing {len(stores)})")
+        table.add_column("ID", overflow="fold")
+        table.add_column("Name")
+        table.add_column("City")
+        table.add_column("State")
+        table.add_column("OSM ID")
+        table.add_column("First Seen")
+        scan = min(len(stores), bounded_limit)
+        for i in range(scan):
+            store = stores[i]
+            addr = store.address or {}
+            ref = find_osm_external_ref(str(store.id), session)
+            osm_id = ref.external_id if ref is not None else "—"
+            first_seen = (
+                store.first_seen.isoformat() if store.first_seen else "—"
+            )
+            table.add_row(
+                str(store.id),
+                store.name,
+                str(addr.get("city", "")),
+                str(addr.get("state", "")),
+                osm_id,
+                first_seen,
+            )
+        console.print(table)
+        console.print(
+            "\n[dim]To promote: update status via SQL "
+            "(`UPDATE stores SET status='candidate' WHERE id='...';`).[/dim]"
+        )

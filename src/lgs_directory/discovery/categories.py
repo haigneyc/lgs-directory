@@ -22,6 +22,9 @@ _PROVIDER_DEFAULT_CATEGORIES: dict[str, list[str]] = {
     "comicbookstores": [StoreCategory.COMIC_SHOP],
     "league_comic_geeks": [StoreCategory.COMIC_SHOP],
     "video_game_sage": [StoreCategory.RETRO_GAMES],
+    # OSM is multi-vertical (shop=games, comics, hobby, ...). Default
+    # to LGS; the auto-categorizer reassigns based on website content.
+    "osm_overpass": [StoreCategory.LGS],
 }
 
 # Set of valid category values for fast membership checks
