@@ -16,6 +16,8 @@
  */
 
 const DISCLOSURE_COPY = {
+  "amazon-creator-connections-swu":
+    "Sponsored. This guide features a product promoted through an Amazon Creator Connections campaign (running through May 17, 2026). Rollforstore earns a commission when you buy via our links (affiliate tag `orangediscoun-20`). We recommend gear we'd actually suggest to a friend — pricing, availability, and set contents are accurate as of publication but Amazon's numbers change daily.",
   "amazon-creator-connections":
     "This post is part of an Amazon Creator Connections campaign. I receive compensation for recommending products and may earn commissions on qualifying purchases. Opinions are my own.",
   "amazon-associates":
