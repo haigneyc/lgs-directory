@@ -3,11 +3,13 @@ import Link from "next/link";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - Roll For Store",
+  title: "Privacy Policy",
   description:
     "Privacy policy for Roll For Store, covering data collection, Google Analytics, affiliate programs, and your rights.",
+  alternates: { canonical: `${SITE_URL}/privacy-policy` },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: "Privacy Policy - Roll For Store",
+    title: "Privacy Policy",
     description:
       "Privacy policy for Roll For Store, covering data collection, Google Analytics, affiliate programs, and your rights.",
     type: "website",

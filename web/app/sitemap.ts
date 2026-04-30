@@ -6,6 +6,21 @@ import { getPublishedGuides } from "@/lib/guides";
 
 const BASE_URL = SITE_URL;
 const MAX_SITEMAP_ENTRIES = 50000;
+const TRUSTED_CANDIDATE_SITEMAP_FILTER = `
+  AND NOT (
+    status = 'candidate'
+    AND wpn_id IS NULL
+    AND id NOT IN (
+      SELECT store_id FROM store_external_refs
+      WHERE provider = 'website_content'
+        AND jsonb_array_length(COALESCE(payload->'products', '[]'::jsonb)) > 0
+    )
+    AND id NOT IN (
+      SELECT store_id FROM store_external_refs
+      WHERE provider = 'games_workshop'
+    )
+  )
+`;
 
 export const revalidate = 3600;
 
@@ -71,7 +86,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const stateRows = await query<{ state: string }>(
     `SELECT DISTINCT address->>'state' AS state
      FROM stores
-     WHERE address->>'state' IS NOT NULL
+     WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_SITEMAP_FILTER}
+       AND slug IS NOT NULL
+       AND btrim(slug) <> ''
+       AND address->>'state' IS NOT NULL
      ORDER BY state`
   );
 
@@ -92,7 +111,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cityRows = await query<{ state: string; city: string }>(
     `SELECT address->>'state' AS state, address->>'city' AS city
      FROM stores
-     WHERE address->>'state' IS NOT NULL
+     WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_SITEMAP_FILTER}
+       AND slug IS NOT NULL
+       AND btrim(slug) <> ''
+       AND address->>'state' IS NOT NULL
        AND address->>'city' IS NOT NULL
      GROUP BY address->>'state', address->>'city'
      HAVING COUNT(*) >= 2
@@ -113,12 +136,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 5. Store detail pages -- prefer the human-readable slug URL added
-  // for Vera Rec 3. Rows that have not yet been backfilled fall back to
-  // the legacy UUID URL, which still resolves (via 301) at the same
-  // ``/store/[slug]`` route.
+  // 5. Store detail pages. Only slug-bearing public rows belong in the
+  // sitemap. Slugless UUID pages may still render for legacy discovery,
+  // but they are explicitly noindex and must not be advertised to Google.
   const storeRows = await query<{ id: string; slug: string | null }>(
-    `SELECT id, slug FROM stores ORDER BY id`
+    `SELECT id, slug FROM stores
+     WHERE status IN ('active', 'verified', 'candidate')
+       ${TRUSTED_CANDIDATE_SITEMAP_FILTER}
+       AND slug IS NOT NULL
+       AND btrim(slug) <> ''
+     ORDER BY id`
   );
 
   console.assert(Array.isArray(storeRows), "sitemap: storeRows must be an array");
@@ -127,11 +154,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (let i = 0; i < storeLimit; i++) {
     const row = storeRows[i];
     console.assert(typeof row.id === "string", "sitemap: store id must be a string");
-    const path = row.slug !== null && row.slug.length > 0
-      ? `/store/${row.slug}`
-      : `/store/${row.id}`;
+    console.assert(typeof row.slug === "string" && row.slug.length > 0, "sitemap: store slug must be non-empty");
     entries.push({
-      url: `${BASE_URL}${path}`,
+      url: `${BASE_URL}/store/${row.slug}`,
       priority: 0.4,
       changeFrequency: "monthly",
     });

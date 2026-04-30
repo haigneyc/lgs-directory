@@ -94,9 +94,10 @@ export async function generateMetadata({
   const hero = resolveHeroImage(entry.meta.heroImage);
 
   return {
-    title: { absolute: `${entry.meta.title} | Roll For Store` },
+    title: entry.meta.title,
     description: entry.meta.description,
     alternates: { canonical },
+    robots: { index: true, follow: true },
     authors: [{ name: entry.meta.author.name, url: entry.meta.author.url }],
     openGraph: {
       title: entry.meta.title,

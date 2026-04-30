@@ -17,6 +17,7 @@ from lgs_directory.models.enums import (
 from lgs_directory.models.online_presence import OnlinePresence
 from lgs_directory.models.store import Store
 from lgs_directory.models.validation_log import ValidationLog
+from lgs_directory.slug import ensure_public_store_slug
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ def transition_store(
 
     old_status = current.value
     store.status = target
+    ensure_public_store_slug(store, session)
     store.last_validated = datetime.now(tz=UTC)
 
     log = ValidationLog(

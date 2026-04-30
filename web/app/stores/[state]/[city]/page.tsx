@@ -61,28 +61,27 @@ export async function generateMetadata(
   console.assert(typeof citySlug === "string", "generateMetadata: citySlug must be a string");
 
   if (stateName === null) {
-    return { title: "Not Found | Roll For Store" };
+    return { title: "Not Found", robots: { index: false, follow: true } };
   }
 
   const abbrev = slugToAbbreviation(stateSlug);
   const cityName = slugToCity(citySlug);
-  const initialResult = await listStores({ state: abbrev ?? undefined, city: cityName });
 
-  if (initialResult.total === 0) {
-    return { title: "Not Found | Roll For Store" };
-  }
-
-  const title = `Game Stores in ${cityName}, ${abbrev} | Roll For Store`;
-  const description = `Browse ${initialResult.total} local game stores in ${cityName}, ${abbrev}. Find WPN-certified stores, online sellers, and more.`;
+  const title = `Game Stores in ${cityName}, ${abbrev}`;
+  const description = `Browse local game stores in ${cityName}, ${abbrev}. Find WPN-certified stores, online sellers, and tabletop gaming shops.`;
+  const canonical = `${SITE_URL}/stores/${stateSlug}/${citySlug}`;
 
   return {
     title,
     description,
+    alternates: { canonical },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
       type: "website",
-      url: `${SITE_URL}/stores/${stateSlug}/${citySlug}`,
+      url: canonical,
+      siteName: "Roll For Store",
     },
   };
 }

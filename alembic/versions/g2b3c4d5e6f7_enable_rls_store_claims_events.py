@@ -1,7 +1,7 @@
 """enable RLS on store_claims and store_events (deny PostgREST access)
 
 Revision ID: g2b3c4d5e6f7
-Revises: f1a2b3c4d5e6
+Revises: d8c4f1a9b3e7
 Create Date: 2026-04-28 00:00:00.000000
 
 Security fix for Supabase advisor `rls_disabled_in_public` ERRORs on
@@ -40,7 +40,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "g2b3c4d5e6f7"
-down_revision: Union[str, Sequence[str], None] = "f1a2b3c4d5e6"
+down_revision: Union[str, Sequence[str], None] = "d8c4f1a9b3e7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

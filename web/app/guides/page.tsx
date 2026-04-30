@@ -14,15 +14,16 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
 /** Maximum guides rendered on the index at once (generous headroom). */
 const MAX_INDEX_ENTRIES = 200;
 
-const PAGE_TITLE = "Guides | Roll For Store";
+const PAGE_TITLE = "Guides";
 const PAGE_DESCRIPTION =
   "In-depth guides for local game store owners and collectors — storage, starter sets, tournament prep, and more.";
 const CANONICAL_URL = `${SITE_URL}/guides`;
 
 export const metadata: Metadata = {
-  title: { absolute: PAGE_TITLE },
+  title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
   alternates: { canonical: CANONICAL_URL },
+  robots: { index: true, follow: true },
   openGraph: {
     title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,

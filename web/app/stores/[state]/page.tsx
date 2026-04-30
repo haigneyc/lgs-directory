@@ -35,23 +35,27 @@ export async function generateMetadata(
   console.assert(stateSlug.length > 0, "generateMetadata: stateSlug must not be empty");
 
   if (stateName === null) {
-    return { title: "Not Found | Roll For Store" };
+    return { title: "Not Found", robots: { index: false, follow: true } };
   }
 
   const abbrev = slugToAbbreviation(stateSlug);
   const initialResult = await listStores({ state: abbrev ?? undefined });
 
-  const title = `Game Stores in ${stateName} | Roll For Store`;
+  const title = `Game Stores in ${stateName}`;
   const description = `Browse ${initialResult.total} local game stores in ${stateName}. Find WPN-certified stores, online sellers, and more.`;
+  const canonical = `${SITE_URL}/stores/${stateSlug}`;
 
   return {
     title,
     description,
+    alternates: { canonical },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
       type: "website",
-      url: `${SITE_URL}/stores/${stateSlug}`,
+      url: canonical,
+      siteName: "Roll For Store",
     },
   };
 }

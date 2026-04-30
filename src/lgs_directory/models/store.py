@@ -28,6 +28,7 @@ class Store(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
+    slug: Mapped[str | None] = mapped_column(String(160), default=None)
     name: Mapped[str] = mapped_column(String(255))
     address: Mapped[dict] = mapped_column(JSONB, nullable=False)  # type: ignore[type-arg]
     latitude: Mapped[float | None] = mapped_column(default=None)

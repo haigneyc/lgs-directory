@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   description:
     "Find game stores near you. Browse 6,000+ local TCG shops, Warhammer stores, comic shops, and tabletop gaming destinations by distance with hours and directions.",
   alternates: { canonical: `${SITE_URL}/near-me` },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Game Stores Near Me — Tabletop, TCG, Warhammer & Comics",
     description:

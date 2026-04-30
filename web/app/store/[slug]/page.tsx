@@ -185,6 +185,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   console.assert(description.length <= META_DESCRIPTION_MAX, "generateMetadata: description exceeds max length");
 
   const thin = isThinStorePage(store, enrichment);
+  const sluglessUuid = isUuid(slug) || store.slug === null || store.slug.length === 0;
 
   return {
     // Use `absolute` so the root layout's "%s | Roll For Store" template
@@ -203,7 +204,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // keeps link equity flowing to parent city/state pages. As soon as
     // any qualifying field (phone, hours, or any presence) is
     // populated, the page automatically becomes indexable again.
-    robots: thin
+    robots: thin || sluglessUuid
       ? { index: false, follow: true }
       : { index: true, follow: true },
     // Explicit per-store Open Graph overrides. The root layout sets

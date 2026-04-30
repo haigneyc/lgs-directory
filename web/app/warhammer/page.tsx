@@ -21,11 +21,14 @@ console.assert(CATEGORY !== null, "warhammer category route must exist");
 export const metadata: Metadata = {
   title: CATEGORY.title,
   description: CATEGORY.description,
+  alternates: { canonical: `${SITE_URL}/warhammer` },
+  robots: { index: true, follow: true },
   openGraph: {
     title: CATEGORY.title,
     description: CATEGORY.description,
     type: "website",
     url: `${SITE_URL}/warhammer`,
+    siteName: "Roll For Store",
   },
 };
 

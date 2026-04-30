@@ -18,7 +18,7 @@ import { StoreTableSkeleton } from "@/components/store-table-skeleton";
 const CATEGORY = getCategoryRouteBySlug("comics")!;
 console.assert(CATEGORY !== null, "comics category route must exist");
 
-const COMICS_TITLE = "Comic Book Store Near Me | Comic Shops Near Me | Roll For Store";
+const COMICS_TITLE = "Comic Book Store Near Me | Comic Shops Near Me";
 const COMICS_DESCRIPTION =
   "Find a comic book store near me and compare comic shops near me with Roll For Store. Browse local comic shops, LCS favorites, graded comics, comic preservation supplies, and comic grading services.";
 const COMICS_H1 = "Comic Book Store Near Me? Browse Comic Shops Near Me";
@@ -26,11 +26,14 @@ const COMICS_H1 = "Comic Book Store Near Me? Browse Comic Shops Near Me";
 export const metadata: Metadata = {
   title: COMICS_TITLE,
   description: COMICS_DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/comics` },
+  robots: { index: true, follow: true },
   openGraph: {
     title: COMICS_TITLE,
     description: COMICS_DESCRIPTION,
     type: "website",
     url: `${SITE_URL}/comics`,
+    siteName: "Roll For Store",
   },
 };
 
