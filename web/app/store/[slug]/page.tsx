@@ -59,6 +59,55 @@ function isThinStorePage(
   return !hasPhone && !hasHours && !hasActivePresence;
 }
 
+function isStoreStatusIndexable(status: string): boolean {
+  console.assert(typeof status === "string", "isStoreStatusIndexable: status must be a string");
+  return status === "active" || status === "verified" || status === "candidate";
+}
+
+function parseScrapedEventDate(value: string): Date | null {
+  console.assert(typeof value === "string", "parseScrapedEventDate: value must be a string");
+  console.assert(value.length > 0, "parseScrapedEventDate: value must be non-empty");
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(value);
+  if (match === null) {
+    return null;
+  }
+  const [, year, month, day, hour, minute] = match;
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute)
+  );
+}
+
+function formatScrapedEventDate(value: string): string {
+  const parsed = parseScrapedEventDate(value);
+  if (parsed === null) {
+    return value;
+  }
+  return parsed.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatScrapedEventTime(startValue: string, endValue: string): string {
+  console.assert(typeof startValue === "string", "formatScrapedEventTime: startValue must be a string");
+  console.assert(typeof endValue === "string", "formatScrapedEventTime: endValue must be a string");
+  const start = parseScrapedEventDate(startValue);
+  const end = parseScrapedEventDate(endValue);
+  if (start === null || end === null) {
+    return "";
+  }
+  const formatOptions: Intl.DateTimeFormatOptions = {
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  return `${start.toLocaleTimeString("en-US", formatOptions)} - ${end.toLocaleTimeString("en-US", formatOptions)}`;
+}
+
 import {
   stateToSlug,
   cityToSlug,
@@ -150,6 +199,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // stale URLs.
     notFound();
   }
+  if (store.status === "closed") {
+    notFound();
+  }
 
   const canonicalPath = store.slug !== null ? storeSlugPath(store.slug) : `/store/${store.id}`;
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
@@ -186,6 +238,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const thin = isThinStorePage(store, enrichment);
   const sluglessUuid = isUuid(slug) || store.slug === null || store.slug.length === 0;
+  const nonIndexableStatus = !isStoreStatusIndexable(store.status);
 
   return {
     // Use `absolute` so the root layout's "%s | Roll For Store" template
@@ -204,7 +257,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // keeps link equity flowing to parent city/state pages. As soon as
     // any qualifying field (phone, hours, or any presence) is
     // populated, the page automatically becomes indexable again.
-    robots: thin || sluglessUuid
+    robots: thin || sluglessUuid || nonIndexableStatus
       ? { index: false, follow: true }
       : { index: true, follow: true },
     // Explicit per-store Open Graph overrides. The root layout sets
@@ -267,6 +320,9 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
   if (!store) {
     notFound();
   }
+  if (store.status === "closed") {
+    notFound();
+  }
 
   const isPremium = store.premium_status === "premium";
   const [enrichment, storeContent, categories, storeEvents] = await Promise.all([
@@ -293,6 +349,11 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
   const rating = enrichment?.rating ?? 0;
   const hasRating = enrichment?.rating !== null && enrichment?.rating !== undefined;
   const hasReviews = hasRating && enrichment?.user_rating_count !== null && enrichment?.user_rating_count !== undefined;
+  const scrapedEvents = storeContent?.events_next_30_days.slice(0, 8) ?? [];
+  const scrapedCalendarUrl =
+    storeContent?.event_url ??
+    storeContent?.events_next_30_days.find((event) => event.source_url.length > 0)?.source_url ??
+    null;
 
   return (
     <>
@@ -436,9 +497,62 @@ async function DynamicStoreDetail({ params }: { params: Promise<{ slug: string }
                 <Calendar className="w-4 h-4 text-yellow-500" />
                 <h2 className="font-display font-semibold text-zinc-200">Events</h2>
               </div>
-              {storeContent.event_url ? (
+              {scrapedEvents.length > 0 ? (
+                <div className="space-y-3">
+                  <ul className="divide-y divide-zinc-800/80">
+                    {scrapedEvents.map((evt) => {
+                      const eventHref = evt.product_url ?? evt.source_url;
+                      return (
+                        <li key={`${evt.service_id ?? evt.title}-${evt.start_date}`} className="py-3 first:pt-0 last:pb-0">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <a
+                                href={eventHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-zinc-200 hover:text-yellow-400 transition-colors"
+                              >
+                                {evt.title}
+                              </a>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {formatScrapedEventDate(evt.start_date)}
+                                {" · "}
+                                {formatScrapedEventTime(evt.start_date, evt.end_date)}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              {evt.price && (
+                                <span className="text-xs font-medium text-zinc-300">{evt.price}</span>
+                              )}
+                              {evt.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-zinc-700 bg-zinc-800/70 text-zinc-400 text-[11px]"
+                                >
+                                  {evt.status}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {scrapedCalendarUrl && (
+                    <a
+                      href={scrapedCalendarUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-yellow-500 hover:text-yellow-400 transition-colors"
+                    >
+                      View full schedule
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              ) : scrapedCalendarUrl ? (
                 <a
-                  href={storeContent.event_url}
+                  href={scrapedCalendarUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm text-yellow-500 hover:text-yellow-400 transition-colors"

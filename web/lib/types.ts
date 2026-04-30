@@ -183,6 +183,23 @@ export interface StoreContent {
   products: string[];
   has_events: boolean;
   event_url: string | null;
+  events_next_30_days: StoreContentEvent[];
+}
+
+export interface StoreContentEvent {
+  title: string;
+  start_date: string;
+  end_date: string;
+  timezone: string;
+  source_url: string;
+  service_id: string | null;
+  event_id: string | null;
+  status: string | null;
+  price: string | null;
+  location: string | null;
+  product_url: string | null;
+  description: string | null;
+  is_not_bookable: boolean | null;
 }
 
 /** Claim role options for the claim form */
