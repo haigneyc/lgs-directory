@@ -105,7 +105,7 @@ let slugCacheInflight: Promise<SlugCache> | null = null;
 
 async function loadSlugCache(): Promise<SlugCache> {
   const rows = await query<{ slug: string | null }>(
-    "SELECT slug FROM stores WHERE slug IS NOT NULL"
+    "SELECT slug FROM stores WHERE slug IS NOT NULL AND status <> 'closed'"
   );
   console.assert(Array.isArray(rows), "loadSlugCache: rows must be an array");
   const set = new Set<string>();

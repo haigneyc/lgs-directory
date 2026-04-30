@@ -15,6 +15,7 @@ import type {
   OnlineStore,
   StoreEnrichment,
   StoreContent,
+  StoreContentEvent,
   StoreCategory,
   StoreEvent,
   HoursPeriod,
@@ -746,22 +747,69 @@ function parseContentPayload(
   const products = Array.isArray(payload.products)
     ? (payload.products as string[])
     : [];
+  const eventsNext30Days = Array.isArray(payload.events_next_30_days)
+    ? payload.events_next_30_days
+        .map(parseStoreContentEvent)
+        .filter((event): event is StoreContentEvent => event !== null)
+        .slice(0, 50)
+    : [];
 
   const content: StoreContent = {
     description:
       typeof payload.description === "string" ? payload.description : null,
     products,
-    has_events: payload.has_events === true,
+    has_events: payload.has_events === true || eventsNext30Days.length > 0,
     event_url:
       typeof payload.event_url === "string" ? payload.event_url : null,
+    events_next_30_days: eventsNext30Days,
   };
 
   console.assert(
     Array.isArray(content.products),
     "parseContentPayload: products must be an array"
   );
+  console.assert(
+    Array.isArray(content.events_next_30_days),
+    "parseContentPayload: events_next_30_days must be an array"
+  );
 
   return content;
+}
+
+function parseStoreContentEvent(value: unknown): StoreContentEvent | null {
+  console.assert(value !== undefined, "parseStoreContentEvent: value must be defined");
+  console.assert(value !== null, "parseStoreContentEvent: value must not be null");
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const event = value as Record<string, unknown>;
+  if (
+    typeof event.title !== "string" ||
+    typeof event.start_date !== "string" ||
+    typeof event.end_date !== "string" ||
+    typeof event.timezone !== "string" ||
+    typeof event.source_url !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    title: event.title,
+    start_date: event.start_date,
+    end_date: event.end_date,
+    timezone: event.timezone,
+    source_url: event.source_url,
+    service_id: typeof event.service_id === "string" ? event.service_id : null,
+    event_id: typeof event.event_id === "string" ? event.event_id : null,
+    status: typeof event.status === "string" ? event.status : null,
+    price: typeof event.price === "string" ? event.price : null,
+    location: typeof event.location === "string" ? event.location : null,
+    product_url: typeof event.product_url === "string" ? event.product_url : null,
+    description:
+      typeof event.description === "string" ? event.description : null,
+    is_not_bookable:
+      typeof event.is_not_bookable === "boolean" ? event.is_not_bookable : null,
+  };
 }
 
 export async function getStoreContent(
