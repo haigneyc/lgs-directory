@@ -14,6 +14,7 @@ from lgs_directory.db import get_session
 from lgs_directory.models.enums import DiscoverySource, StoreStatus, WpnLevel
 from lgs_directory.models.store import Store
 from lgs_directory.schemas import AddressSchema
+from lgs_directory.slug import ensure_public_store_slug
 
 console = Console()
 
@@ -77,6 +78,7 @@ def add(
     )
 
     with get_session() as session:
+        ensure_public_store_slug(new_store, session)
         session.add(new_store)
         session.flush()
         assert new_store.id is not None, "Store ID was not generated"
@@ -231,6 +233,7 @@ def edit(
             s.name = name
         if status is not None:
             s.status = StoreStatus(status)
+            ensure_public_store_slug(s, session)
         if phone is not None:
             s.phone = phone
         if notes is not None:

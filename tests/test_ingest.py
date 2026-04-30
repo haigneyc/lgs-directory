@@ -83,6 +83,7 @@ class TestCreateStoreFromRaw:
         assert len(store.presences) == 1
         assert store.presences[0].url == "https://coolstoreinc.com"
 
+
     def test_no_website_no_presence(self) -> None:
         raw = _make_raw(website=None)
         store = _create_store_from_raw(raw, _make_addr())

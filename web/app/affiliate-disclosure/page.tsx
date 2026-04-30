@@ -4,14 +4,15 @@ import { SITE_URL } from "@/lib/site";
 import { AMAZON_DISCLOSURE_TEXT } from "@/lib/amazon";
 
 export const metadata: Metadata = {
-  title: "Affiliate Disclosure | Roll For Store",
+  title: "Affiliate Disclosure",
   description:
     "How RollForStore participates in the Amazon Associates Program and the eBay Partner Network, and what that means for visitors.",
   alternates: {
     canonical: `${SITE_URL}/affiliate-disclosure`,
   },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: "Affiliate Disclosure | Roll For Store",
+    title: "Affiliate Disclosure",
     description:
       "How RollForStore participates in affiliate programs and what that means for visitors.",
     type: "website",

@@ -8,12 +8,13 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Game Stores by State | Roll For Store",
+  title: "Game Stores by State",
   description:
     "Browse local game stores across the United States. Find WPN-certified stores, comic shops, retro game stores, and Warhammer hobby shops by state.",
   alternates: { canonical: `${SITE_URL}/stores` },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: "Game Stores by State | Roll For Store",
+    title: "Game Stores by State",
     description:
       "Browse local game stores across the United States by state.",
     type: "website",

@@ -24,6 +24,7 @@ from lgs_directory.models.enums import (
 from lgs_directory.models.online_presence import OnlinePresence
 from lgs_directory.models.store import Store
 from lgs_directory.schemas import AddressSchema
+from lgs_directory.slug import ensure_public_store_slug
 
 logger = logging.getLogger(__name__)
 
@@ -261,15 +262,17 @@ def ingest_wpn_stores(
             # Update existing store if we have new data
             matched_store = dedup_result.matched_store
             was_updated = _update_store_from_raw(matched_store, raw)
+            slug_updated = ensure_public_store_slug(matched_store, session)
             if matched_store.id is not None:
                 assign_categories(matched_store.id, default_categories, session)
-            if was_updated:
+            if was_updated or slug_updated:
                 report.updated += 1
             else:
                 report.skipped += 1
         else:
             # Insert new store
             new_store = _create_store_from_raw(raw, addr)
+            ensure_public_store_slug(new_store, session)
             session.add(new_store)
             session.flush()
             existing_stores.append(new_store)

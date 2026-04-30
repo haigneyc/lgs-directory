@@ -32,6 +32,7 @@ from lgs_directory.models.enums import (
 from lgs_directory.models.online_presence import OnlinePresence
 from lgs_directory.models.store import Store
 from lgs_directory.schemas import AddressSchema
+from lgs_directory.slug import ensure_public_store_slug
 
 logger = logging.getLogger(__name__)
 
@@ -269,7 +270,8 @@ def ingest_stores(
 
         if matched_store is not None:
             was_updated = update_store_from_raw(matched_store, raw)
-            if was_updated:
+            slug_updated = ensure_public_store_slug(matched_store, session)
+            if was_updated or slug_updated:
                 report.updated += 1
             else:
                 report.skipped += 1
@@ -281,6 +283,7 @@ def ingest_stores(
                 upsert_external_ref(matched_store.id, provider_key, str(ext_id), session)
         else:
             new_store = create_store_from_raw(raw, addr, discovery_source)
+            ensure_public_store_slug(new_store, session)
             session.add(new_store)
             session.flush()
             existing_stores.append(new_store)
