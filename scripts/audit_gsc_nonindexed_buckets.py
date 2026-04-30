@@ -20,6 +20,21 @@ MAX_ROWS = 200_000
 MAX_SAMPLES = 8
 
 BUCKET_INFO = {
+    "static_asset": (
+        "Next.js static asset",
+        "not an indexable HTML page",
+        "ignore",
+    ),
+    "opengraph_image": (
+        "Dynamic Open Graph image endpoint",
+        "not an indexable HTML page",
+        "ignore",
+    ),
+    "store_claim": (
+        "Store claim page",
+        "noindex expected",
+        "ignore",
+    ),
     "store_uuid": (
         "UUID store URL or slugless public row",
         "redirect/noindex expected",
@@ -47,7 +62,13 @@ def _classify(path: str) -> str:
     """Classify a Roll For Store URL path into an SEO recovery bucket."""
     assert isinstance(path, str), "path must be a string"
     parts = [part for part in path.split("/") if part]
+    if len(parts) >= 2 and parts[0] == "_next" and parts[1] == "static":
+        return "static_asset"
+    if len(parts) >= 1 and parts[-1] == "opengraph-image":
+        return "opengraph_image"
     if len(parts) >= 2 and parts[0] == "store":
+        if len(parts) >= 3 and parts[2] == "claim":
+            return "store_claim"
         return "store_uuid" if UUID_RE.match(parts[1]) else "store_slug"
     if len(parts) == 2 and parts[0] == "stores":
         return "state"
@@ -66,6 +87,8 @@ def _classify(path: str) -> str:
 def _action_for(bucket: str, path: str) -> str:
     """Return the expected recovery action for a URL bucket."""
     assert bucket in BUCKET_INFO, "bucket must be known"
+    if bucket in {"static_asset", "opengraph_image", "store_claim"}:
+        return "ignore"
     if bucket == "store_uuid":
         return "redirect" if UUID_RE.search(path) else "noindex"
     if bucket == "state":
