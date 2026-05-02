@@ -20,12 +20,14 @@ export const meta: GuideMeta = {
     "A beginner's guide to Star Wars Unlimited for MTG and Pokemon players: how SWU plays differently, three ways to start, and what the Intro Battle: Hoth gets you.",
   author: { name: "Roll For Store Editorial" },
   publishedAt: "2026-04-21",
-  updatedAt: "2026-04-29",
+  updatedAt: "2026-05-02",
   disclosure: "amazon-creator-connections-swu",
   draft: false,
   tags: ["star-wars-unlimited", "beginners", "trading-card-games"],
 };
 
+const ASMODEE_HOTH_HREF =
+  "https://store.asmodee.com/products/star-wars-unlimited-intro-battle-hoth";
 const HOTH_HREF =
   "https://www.amazon.com/dp/B0FLQ68H1G?ref=t_ac_view_request_product_image&campaignId=amzn1.campaign.1L1498A4C8CX0&linkCode=tr1&tag=orangediscoun-20&linkId=amzn1.campaign.1L1498A4C8CX0_1776824144789";
 const TWO_PLAYER_STARTER_HREF =
@@ -157,6 +159,19 @@ export default function StarWarsUnlimitedBeginner() {
       </p>
 
       <h2>What the Intro Battle: Hoth starter gets you</h2>
+      <p>
+        The publisher&apos;s{" "}
+        <a
+          href={ASMODEE_HOTH_HREF}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Asmodee product page
+        </a>{" "}
+        positions Intro Battle: Hoth as a self-contained first
+        game, with Vader&apos;s Imperial army against Leia
+        Organa&apos;s Rebel defense of Echo Base.
+      </p>
       <ul>
         <li>
           Two pre-built Hoth-themed decks for both sides of the
