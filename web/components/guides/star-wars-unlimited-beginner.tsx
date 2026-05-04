@@ -37,6 +37,7 @@ const A_LAWLESS_TIME_BOOSTER_HREF =
 const A_LAWLESS_TIME_SPOTLIGHT_HREF =
   "https://www.amazon.com/s?k=Star+Wars+Unlimited+A+Lawless+Time+Spotlight+Deck&tag=orangediscoun-20";
 
+// eslint-disable-next-line jarvis/function-length -- Long-form guide body is editorial content, not control flow.
 export default function StarWarsUnlimitedBeginner() {
   console.assert(
     meta.slug === "star-wars-unlimited-beginner",
